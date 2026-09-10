@@ -6,4 +6,8 @@ export const validationSchema = Joi.object({
      .default('development'),
  
    PORT: Joi.number().integer().port().default(3000),
+
+  DATABASE_URL: Joi.string()
+    .uri({ scheme: ['postgresql', 'postgres'] })
+    .required(),
 });
