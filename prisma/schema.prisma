@@ -40,3 +40,13 @@ model Faculty {
 
   @@map("faculties")
 }
+
+model Destination {
+  id          String @id @default(uuid())
+  description String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("destinations")
+}
