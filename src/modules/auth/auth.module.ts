@@ -12,10 +12,12 @@ import { JwtAccessGuard } from './guards/jwt-access.guard';
 import { JwtRefreshGuard } from './guards/jwt-refresh.guard';
 import { RolesGuard } from './guards/roles.guard';
 
+const passportModule = PassportModule.register({});
+
 @Module({
   imports: [
     PrismaModule,
-    PassportModule.register({}),
+    passportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
@@ -35,6 +37,6 @@ import { RolesGuard } from './guards/roles.guard';
     JwtRefreshGuard,
     RolesGuard,
   ],
-  exports: [JwtAccessGuard, JwtRefreshGuard, RolesGuard],
+  exports: [passportModule, JwtAccessGuard, JwtRefreshGuard, RolesGuard],
 })
 export class AuthModule {}

@@ -1,4 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { UseAuth } from '../auth/decorators/use-auth.decorator';
 import { CreateDestinationFeature } from './features/create-destination.feature';
 import { ListDestinationsFeature } from './features/list-destinations.feature';
 import { FindDestinationByIdFeature } from './features/find-destination-by-id.feature';
@@ -11,6 +13,7 @@ import { DestinationResponseDto } from './dtos/response/destination.response.dto
 import { PaginatedResultResponseDto } from '../../common/dtos/response/paginated-result.response.dto';
 
 @Controller('destinations')
+@UseAuth(UserRole.ADMIN)
 export class DestinationController {
   constructor(
     private readonly createDestinationFeature: CreateDestinationFeature,

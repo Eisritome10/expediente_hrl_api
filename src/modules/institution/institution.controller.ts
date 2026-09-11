@@ -1,4 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { UseAuth } from '../auth/decorators/use-auth.decorator';
 import { CreateInstitutionFeature } from './features/create-institution.feature';
 import { ListInstitutionsFeature } from './features/list-institutions.feature';
 import { FindInstitutionByIdFeature } from './features/find-institution-by-id.feature';
@@ -11,6 +13,7 @@ import { InstitutionResponseDto } from './dtos/response/institution.response.dto
 import { PaginatedResultResponseDto } from '../../common/dtos/response/paginated-result.response.dto';
 
 @Controller('institutions')
+@UseAuth(UserRole.ADMIN)
 export class InstitutionController {
   constructor(
     private readonly createInstitutionFeature: CreateInstitutionFeature,

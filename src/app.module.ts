@@ -7,6 +7,8 @@ import { FacultyModule } from './modules/faculty/faculty.module';
 import { DestinationModule } from './modules/destination/destination.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SeederModule } from './seeder/seeder.module';
+import { ResearchLineModule } from './modules/research-line/research-line.module';
+import { ModalityModule } from './modules/modality/modality.module';
 
 @Module({
   imports: [
@@ -18,6 +20,8 @@ import { SeederModule } from './seeder/seeder.module';
     InstitutionModule,
     FacultyModule,
     DestinationModule,
+    ResearchLineModule,
+    ModalityModule,
   ],
 })
 export class AppModule {}

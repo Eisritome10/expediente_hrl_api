@@ -1,4 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
+import { UserRole } from '@prisma/client';
+import { UseAuth } from '../auth/decorators/use-auth.decorator';
 import { CreateResearcherFeature } from './features/create-researcher.feature';
 import { ListResearchersFeature } from './features/list-researchers.feature';
 import { FindResearcherByIdFeature } from './features/find-researcher-by-id.feature';
@@ -11,6 +13,7 @@ import { ResearcherResponseDto } from './dtos/response/researcher.response.dto';
 import { PaginatedResultResponseDto } from '../../common/dtos/response/paginated-result.response.dto';
 
 @Controller('researchers')
+@UseAuth(UserRole.ADMIN)
 export class ResearcherController {
   constructor(
     private readonly createResearcherFeature: CreateResearcherFeature,

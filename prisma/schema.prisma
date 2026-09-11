@@ -76,3 +76,31 @@ model User {
 
   @@map("users")
 }
+
+enum LineType {
+  HRL
+  META_2030
+}
+
+model ResearchLine {
+  id   String   @id @default(uuid())
+  name String
+  type LineType
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, type])
+  @@map("research_lines")
+}
+
+model Modality {
+  id   String  @id @default(uuid())
+  name String  @unique
+  fee  Decimal @db.Decimal(10, 2)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("modalities")
+}
