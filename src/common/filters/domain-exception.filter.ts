@@ -13,6 +13,8 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.INSTITUTION_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.FACULTY_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.FACULTY_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+    [DomainErrorCode.DESTINATION_NOT_FOUND]: HttpStatus.NOT_FOUND,
+    [DomainErrorCode.DESTINATION_DESCRIPTION_ALREADY_EXISTS]: HttpStatus.CONFLICT,
   };
 
   catch(exception: DomainException, host: ArgumentsHost) {
