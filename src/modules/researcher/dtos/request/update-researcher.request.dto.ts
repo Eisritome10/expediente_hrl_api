@@ -1,4 +1,4 @@
-import { OmitType, PartialType } from '@nestjs/mapped-types';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { CreateResearcherRequestDto } from './create-researcher.request.dto';
 
 export class UpdateResearcherRequestDto extends PartialType(
