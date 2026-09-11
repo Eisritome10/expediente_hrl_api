@@ -19,6 +19,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.USER_INACTIVE]: HttpStatus.FORBIDDEN,
     [DomainErrorCode.RESEARCH_LINE_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.MODALITY_NOT_FOUND]: HttpStatus.NOT_FOUND,
+    [DomainErrorCode.MODALITY_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
   };
 
   catch(exception: DomainException, host: ArgumentsHost) {
