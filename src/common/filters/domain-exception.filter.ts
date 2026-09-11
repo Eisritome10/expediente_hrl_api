@@ -9,6 +9,8 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.RESEARCHER_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.RESEARCHER_DNI_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.RESEARCHER_EMAIL_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+    [DomainErrorCode.INSTITUTION_NOT_FOUND]: HttpStatus.NOT_FOUND,
+    [DomainErrorCode.INSTITUTION_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
   };
 
   catch(exception: DomainException, host: ArgumentsHost) {
