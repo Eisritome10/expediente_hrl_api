@@ -15,6 +15,8 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.FACULTY_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.DESTINATION_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.DESTINATION_DESCRIPTION_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+    [DomainErrorCode.INVALID_CREDENTIALS]: HttpStatus.UNAUTHORIZED,
+    [DomainErrorCode.USER_INACTIVE]: HttpStatus.FORBIDDEN,
   };
 
   catch(exception: DomainException, host: ArgumentsHost) {

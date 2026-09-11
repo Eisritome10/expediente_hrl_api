@@ -5,11 +5,15 @@ import { ResearcherModule } from './modules/researcher/researcher.module';
 import { InstitutionModule } from './modules/institution/institution.module';
 import { FacultyModule } from './modules/faculty/faculty.module';
 import { DestinationModule } from './modules/destination/destination.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { SeederModule } from './seeder/seeder.module';
 
 @Module({
   imports: [
     AppConfigModule,
     PrismaModule,
+    SeederModule,
+    AuthModule,
     ResearcherModule,
     InstitutionModule,
     FacultyModule,
