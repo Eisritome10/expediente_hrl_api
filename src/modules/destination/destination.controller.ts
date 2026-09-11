@@ -1,6 +1,17 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiCreatedResponse,
+  ApiNoContentResponse,
+  ApiNotFoundResponse,
+  ApiOkResponse,
+  ApiOperation,
+  ApiParam,
+  ApiTags,
+} from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { UseAuth } from '../auth/decorators/use-auth.decorator';
+import { ApiPaginatedResponse } from '../../common/swagger/api-paginated-response.decorator';
 import { CreateDestinationFeature } from './features/create-destination.feature';
 import { ListDestinationsFeature } from './features/list-destinations.feature';
 import { FindDestinationByIdFeature } from './features/find-destination-by-id.feature';
@@ -12,6 +23,8 @@ import { ListDestinationsQueryDto } from './dtos/request/list-destinations.query
 import { DestinationResponseDto } from './dtos/response/destination.response.dto';
 import { PaginatedResultResponseDto } from '../../common/dtos/response/paginated-result.response.dto';
 
+@ApiTags('destinations')
+@ApiBearerAuth()
 @Controller('destinations')
 @UseAuth(UserRole.ADMIN)
 export class DestinationController {
@@ -24,6 +37,8 @@ export class DestinationController {
   ) {}
 
   @Post()
+  @ApiOperation({ summary: 'Crear un destino' })
+  @ApiCreatedResponse({ type: DestinationResponseDto })
   async create(@Body() dto: CreateDestinationRequestDto): Promise<DestinationResponseDto> {
     const destination = await this.createDestinationFeature.execute({ description: dto.description });
 
@@ -31,6 +46,8 @@ export class DestinationController {
   }
 
   @Get()
+  @ApiOperation({ summary: 'Listar destinos' })
+  @ApiPaginatedResponse(DestinationResponseDto)
   async list(
     @Query() query: ListDestinationsQueryDto,
   ): Promise<PaginatedResultResponseDto<DestinationResponseDto>> {
@@ -40,6 +57,10 @@ export class DestinationController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Obtener un destino por id' })
+  @ApiParam({ name: 'id', description: 'Id del destino' })
+  @ApiOkResponse({ type: DestinationResponseDto })
+  @ApiNotFoundResponse({ description: 'El destino no existe' })
   async findById(@Param('id') id: string): Promise<DestinationResponseDto> {
     const destination = await this.findDestinationByIdFeature.execute(id);
 
@@ -47,6 +68,10 @@ export class DestinationController {
   }
 
   @Patch(':id')
+  @ApiOperation({ summary: 'Actualizar un destino' })
+  @ApiParam({ name: 'id', description: 'Id del destino' })
+  @ApiOkResponse({ type: DestinationResponseDto })
+  @ApiNotFoundResponse({ description: 'El destino no existe' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateDestinationRequestDto,
@@ -58,6 +83,10 @@ export class DestinationController {
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar un destino' })
+  @ApiParam({ name: 'id', description: 'Id del destino' })
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse({ description: 'El destino no existe' })
   async remove(@Param('id') id: string): Promise<void> {
     await this.deleteDestinationFeature.execute(id);
   }
