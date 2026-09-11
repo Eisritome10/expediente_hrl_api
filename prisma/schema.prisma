@@ -30,3 +30,13 @@ model Institution {
 
   @@map("institutions")
 }
+
+model Faculty {
+  id   String @id @default(uuid())
+  name String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("faculties")
+}
