@@ -10,6 +10,7 @@ describe('CreateInstitutionFeature', () => {
   const input = {
     name: 'Hospital Regional Lambayeque',
     abbreviation: 'HRL',
+    esUniversidad: false,
   };
 
   beforeEach(() => {

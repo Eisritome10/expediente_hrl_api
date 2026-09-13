@@ -20,6 +20,16 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.RESEARCH_LINE_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.MODALITY_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.MODALITY_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+    [DomainErrorCode.PROTOCOL_NOT_FOUND]: HttpStatus.NOT_FOUND,
+    [DomainErrorCode.PROTOCOL_NRO_EXPEDIENTE_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+    [DomainErrorCode.PROTOCOL_INVALID_REFERENCE]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOL_INVALID_RESEARCH_LINE]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOLO_CONVENIO_SIN_NOMBRE]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOLO_REVISION_HC_INCOMPLETA]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOLO_INVESTIGADOR_DUPLICADO]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOLO_LUGAR_EJECUCION_INCONSISTENTE]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOLO_MEMOS_NO_APLICABLES]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOLO_FACULTAD_REQUIERE_UNIVERSIDAD]: HttpStatus.BAD_REQUEST,
   };
 
   catch(exception: DomainException, host: ArgumentsHost) {

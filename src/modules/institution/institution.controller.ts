@@ -43,6 +43,7 @@ export class InstitutionController {
     const institution = await this.createInstitutionFeature.execute({
       name: dto.name,
       abbreviation: dto.abbreviation ?? null,
+      esUniversidad: dto.esUniversidad ?? false,
     });
 
     return InstitutionResponseDto.from(institution);

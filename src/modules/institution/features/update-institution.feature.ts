@@ -8,6 +8,7 @@ import { FindInstitutionByIdFeature } from './find-institution-by-id.feature';
 export type UpdateInstitutionInput = {
   name?: string;
   abbreviation?: string;
+  esUniversidad?: boolean;
 };
 
 @Injectable()
