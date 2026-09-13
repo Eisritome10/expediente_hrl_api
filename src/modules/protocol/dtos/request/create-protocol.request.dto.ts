@@ -55,14 +55,14 @@ export class CreateProtocolRequestDto {
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID('all', { each: true })
   coinvestigadorIds?: string[];
 
   @ApiPropertyOptional({ description: 'Ids de asesores', type: [String], default: [] })
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID('all', { each: true })
   asesorIds?: string[];
 
   @ApiPropertyOptional({ description: 'Id de la institución' })
@@ -79,7 +79,7 @@ export class CreateProtocolRequestDto {
   @IsOptional()
   @IsArray()
   @ArrayUnique()
-  @IsUUID('4', { each: true })
+  @IsUUID('all', { each: true })
   destinoIds?: string[];
 
   @ApiProperty({ description: 'Id de la línea de investigación HRL' })
