@@ -11,7 +11,7 @@ describe('FindInstitutionByIdFeature', () => {
   });
 
   it('returns the institution when found', async () => {
-    const institution = { id: 'i1', name: 'Hospital Regional Lambayeque' };
+    const institution = { id: 'i1', name: 'Hospital Regional de Loreto' };
     (prisma.institution.findUnique as jest.Mock).mockResolvedValue(institution);
 
     await expect(feature.execute('i1')).resolves.toEqual(institution);

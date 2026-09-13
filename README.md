@@ -2,7 +2,7 @@
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
 
-<p align="center">API REST para el seguimiento de protocolos de investigación del Hospital Regional Lambayeque (HRL), construida con NestJS y Prisma.</p>
+<p align="center">API REST para el seguimiento de protocolos de investigación del Hospital Regional de Loreto (HRL), construida con NestJS y Prisma.</p>
 
 ## Descripción
 

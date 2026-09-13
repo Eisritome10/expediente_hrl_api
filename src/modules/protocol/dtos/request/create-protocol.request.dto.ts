@@ -36,7 +36,7 @@ export class CreateProtocolRequestDto {
   @UpperCase()
   disenoEstudio: string;
 
-  @ApiProperty({ description: 'Lugar de ejecución', example: 'Hospital Regional Lambayeque' })
+  @ApiProperty({ description: 'Lugar de ejecución', example: 'Hospital Regional de Loreto' })
   @IsString()
   @Length(1, 255)
   @UpperCase()

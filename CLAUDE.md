@@ -1,6 +1,6 @@
 ## What this project is
 
-`expediente_hrl_api` is a NestJS + Prisma REST API that tracks research protocols for Hospital Regional Lambayeque (HRL). It replaces a legacy procedural-PHP system. Domain entities: `Researcher`, `Institution`, `Faculty`, `Destination`, `ResearchLine`, `Modality`, `User`, `Protocol`, `ProtocolReview` (Spanish equivalents: Investigador, Institución, Facultad, Destino, Línea de Investigación, Modalidad, Usuario, Protocolo, Revisión de Protocolo).
+`expediente_hrl_api` is a NestJS + Prisma REST API that tracks research protocols for Hospital Regional de Loreto (HRL). It replaces a legacy procedural-PHP system. Domain entities: `Researcher`, `Institution`, `Faculty`, `Destination`, `ResearchLine`, `Modality`, `User`, `Protocol`, `ProtocolReview` (Spanish equivalents: Investigador, Institución, Facultad, Destino, Línea de Investigación, Modalidad, Usuario, Protocolo, Revisión de Protocolo).
 
 **This file documents the conventions actually implemented in `src/`.** If you're adding or changing a module, match what's already there over anything else — including older design notes (`guia-implementacion-nestjs-prisma-investigahrl.md`, `docs/modelo-datos-nestjs-prisma.md`) that predate the current code and use different folder/class names (`use-cases/`, `dto/`, `errors/`, Spanish class names). Those docs are historical context only; do not follow their naming when they conflict with this file or with existing code under `src/modules/`.
 
