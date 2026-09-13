@@ -8,7 +8,7 @@ describe('CreateInstitutionFeature', () => {
   const feature = new CreateInstitutionFeature(prisma);
 
   const input = {
-    name: 'Hospital Regional Lambayeque',
+    name: 'Hospital Regional de Loreto',
     abbreviation: 'HRL',
     esUniversidad: false,
   };
