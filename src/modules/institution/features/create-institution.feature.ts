@@ -7,6 +7,7 @@ import { InstitutionNameAlreadyExistsException } from '../exceptions/institution
 export type CreateInstitutionInput = {
   name: string;
   abbreviation: string | null;
+  esUniversidad: boolean;
 };
 
 @Injectable()

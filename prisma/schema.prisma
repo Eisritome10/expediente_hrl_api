@@ -17,16 +17,23 @@ model Researcher {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  protocolsAsPrincipal      Protocol[]               @relation("ProtocolInvestigadorPrincipal")
+  protocolCoinvestigaciones ProtocolCoinvestigador[]  @relation("ProtocolCoinvestigadores")
+  protocolAsesorias         ProtocolAsesor[]          @relation("ProtocolAsesores")
+
   @@map("researchers")
 }
 
 model Institution {
-  id           String   @id @default(uuid())
-  name         String   @unique
-  abbreviation String?
+  id            String   @id @default(uuid())
+  name          String   @unique
+  abbreviation  String?
+  esUniversidad Boolean  @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  protocols Protocol[]
 
   @@map("institutions")
 }
@@ -38,6 +45,8 @@ model Faculty {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  protocols Protocol[]
+
   @@map("faculties")
 }
 
@@ -47,6 +56,8 @@ model Destination {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  protocolDestinos ProtocolDestino[]
 
   @@map("destinations")
 }
@@ -90,6 +101,9 @@ model ResearchLine {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  protocolsAsLineaHrl      Protocol[] @relation("ProtocolLineaHrl")
+  protocolsAsLineaMeta2030 Protocol[] @relation("ProtocolLineaMeta2030")
+
   @@unique([name, type])
   @@map("research_lines")
 }
@@ -102,5 +116,93 @@ model Modality {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  protocols Protocol[]
+
   @@map("modalities")
+}
+
+model Protocol {
+  id String @id @default(uuid())
+
+  nroExpediente   String   @unique
+  fechaRecepcion  DateTime
+  titulo          String
+  disenoEstudio   String
+  lugarEjecucion  String
+  esInstitucional Boolean  @default(true)
+
+  investigadorPrincipalId String
+  investigadorPrincipal   Researcher @relation("ProtocolInvestigadorPrincipal", fields: [investigadorPrincipalId], references: [id])
+
+  institucionId String?
+  institucion   Institution? @relation(fields: [institucionId], references: [id])
+
+  facultadId String?
+  facultad   Faculty? @relation(fields: [facultadId], references: [id])
+
+  lineaHrlId String
+  lineaHrl   ResearchLine @relation("ProtocolLineaHrl", fields: [lineaHrlId], references: [id])
+
+  lineaMeta2030Id String
+  lineaMeta2030   ResearchLine @relation("ProtocolLineaMeta2030", fields: [lineaMeta2030Id], references: [id])
+
+  modalidadId String
+  modalidad   Modality @relation(fields: [modalidadId], references: [id])
+
+  propositoRevision   String
+  fechaRevision       DateTime?
+  tipoComprobante     String?
+  comprobanteRevision String?
+  pagoRevision        Decimal? @db.Decimal(10, 2)
+
+  esEnmienda Boolean @default(false)
+
+  esConvenio     Boolean @default(false)
+  nombreConvenio String?
+
+  requiereRevisionHc Boolean  @default(false)
+  montoHc            Decimal? @db.Decimal(10, 2)
+  tipoComprobanteHc  String?
+  nroComprobanteHc   String?
+
+  certificadoBuenasPracticas Boolean @default(false)
+
+  coinvestigadores ProtocolCoinvestigador[]
+  asesores         ProtocolAsesor[]
+  destinos         ProtocolDestino[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("protocols")
+}
+
+model ProtocolCoinvestigador {
+  protocolId   String
+  protocol     Protocol   @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  researcherId String
+  researcher   Researcher @relation("ProtocolCoinvestigadores", fields: [researcherId], references: [id])
+
+  @@id([protocolId, researcherId])
+  @@map("protocol_coinvestigadores")
+}
+
+model ProtocolAsesor {
+  protocolId   String
+  protocol     Protocol   @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  researcherId String
+  researcher   Researcher @relation("ProtocolAsesores", fields: [researcherId], references: [id])
+
+  @@id([protocolId, researcherId])
+  @@map("protocol_asesores")
+}
+
+model ProtocolDestino {
+  protocolId    String
+  protocol      Protocol    @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  destinationId String
+  destination   Destination @relation(fields: [destinationId], references: [id])
+
+  @@id([protocolId, destinationId])
+  @@map("protocol_destinos")
 }

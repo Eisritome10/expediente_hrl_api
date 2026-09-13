@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SeederModule } from './seeder/seeder.module';
 import { ResearchLineModule } from './modules/research-line/research-line.module';
 import { ModalityModule } from './modules/modality/modality.module';
+import { ProtocolModule } from './modules/protocol/protocol.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { ModalityModule } from './modules/modality/modality.module';
     DestinationModule,
     ResearchLineModule,
     ModalityModule,
+    ProtocolModule,
   ],
 })
 export class AppModule {}

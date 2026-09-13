@@ -1,4 +1,4 @@
-import { IsOptional, IsString, Length } from 'class-validator';
+import { IsBoolean, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UpperCase } from '../../../../common/decorators/upper-case.decorator';
 
@@ -15,4 +15,9 @@ export class CreateInstitutionRequestDto {
   @Length(1, 30)
   @UpperCase()
   abbreviation?: string;
+
+  @ApiPropertyOptional({ description: '¿Es una universidad?', default: false })
+  @IsOptional()
+  @IsBoolean()
+  esUniversidad?: boolean;
 }
