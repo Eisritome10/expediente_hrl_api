@@ -73,15 +73,20 @@ Ver [CLAUDE.md](CLAUDE.md) para las convenciones completas (nomenclatura, planti
 $ cp .env.example .env.development
 ```
 
+Todas las variables se validan al arrancar con `joi` (ver `src/common/config/app-config/schema/validation.schema.ts`); si falta una requerida o tiene un formato inválido, la app no levanta.
+
 Variables requeridas (ver `.env.example`):
 
 | Variable | Descripción |
 |---|---|
 | `PORT` | Puerto del servidor HTTP (default `3000`) |
-| `DATABASE_URL` | Cadena de conexión de PostgreSQL |
+| `CORS_ORIGIN` | Lista de orígenes permitidos separados por coma (ej. la URL del frontend en React) |
+| `DATABASE_URL` | Cadena de conexión de PostgreSQL (ej. `postgresql://usuario:password@host:5432/db`) |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | Secretos de firma JWT, mínimo 32 caracteres cada uno, deben ser distintos entre sí |
 | `JWT_ACCESS_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN` | Expiración de tokens (ej. `15m`, `7d`) |
 | `SEED_ADMIN_PASSWORD` | Contraseña del usuario `admin` que crea el seeder en el primer arranque |
+
+`.env.<NODE_ENV>` se elige automáticamente según el script (`dotenv -e .env.development`, `.env.test`, etc.) — no hace falta exportar `NODE_ENV` a mano salvo en producción, donde los scripts `build`/`start`/`deploy` ya lo fijan a `production` (los secretos en ese caso deben venir del entorno del host, no de un archivo `.env` versionado).
 
 ## Instalación
 
@@ -95,22 +100,44 @@ $ yarn install
 # aplicar migraciones pendientes en desarrollo
 $ yarn prisma:dev:migrate
 
+# ejecutar el seeder (crea el usuario admin inicial si no existe)
+$ yarn prisma:dev:seed
+
 # explorar la base de datos con Prisma Studio
 $ yarn prisma:dev:studio
 ```
 
-## Ejecutar el proyecto
+## Ejecutar el proyecto en desarrollo
 
 ```bash
-# desarrollo (watch mode)
 $ yarn start:dev
-
-# producción
-$ yarn build
-$ yarn start:prod
 ```
 
-Al arrancar, el `SeederService` crea automáticamente un usuario `admin` (rol `ADMIN`) si no existe, usando `SEED_ADMIN_PASSWORD`. Con ese usuario se obtiene el primer access token vía `POST /auth/login`.
+Al arrancar, el `SeederService` crea automáticamente un usuario `admin` (rol `ADMIN`) si no existe, usando `SEED_ADMIN_PASSWORD`. Con ese usuario se obtiene el primer access token vía `POST /auth/login`. La documentación interactiva (Swagger) queda disponible en `/api/docs` y todas las rutas de negocio cuelgan del prefijo global `/api/v1`.
+
+## Despliegue a producción
+
+No hay `Dockerfile` ni pipeline de CI/CD en el repositorio todavía: el despliegue es manual sobre un host que corra Node.js (VM, contenedor propio, PaaS tipo Render/Railway, etc.) con acceso a una instancia de PostgreSQL.
+
+1. **Provisionar PostgreSQL** y obtener su cadena de conexión para `DATABASE_URL`.
+2. **Configurar las variables de entorno de producción** directamente en el entorno del host/proceso (panel del PaaS, `systemd`, secretos del contenedor) — no reutilizar `.env.development` ni commitear un `.env` de producción. Como mínimo: `DATABASE_URL`, `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `JWT_ACCESS_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `SEED_ADMIN_PASSWORD`, `CORS_ORIGIN` (apuntando al dominio real del frontend) y `PORT` si el host lo requiere explícito.
+3. **Instalar dependencias y compilar:**
+   ```bash
+   $ yarn install --frozen-lockfile
+   $ yarn build
+   ```
+4. **Aplicar migraciones contra la base de producción** (no usar `prisma migrate dev` en producción — es destructivo/interactivo por diseño). Con `DATABASE_URL` ya apuntando a la base productiva:
+   ```bash
+   $ npx prisma migrate deploy
+   ```
+5. **Arrancar el proceso compilado:**
+   ```bash
+   $ yarn start:prod
+   ```
+   Esto corre `node dist/main.js` directamente; en producción real se recomienda ponerlo detrás de un supervisor de procesos (`pm2`, el propio manejador de servicios del PaaS, o un `systemd` unit) para reinicios automáticos, y detrás de un reverse proxy (nginx, Caddy, el balanceador del PaaS) que termine TLS.
+6. El seeder crea el usuario `admin` inicial en el primer arranque contra una base vacía; en arranques posteriores lo detecta y no lo duplica.
+
+Alternativa disponible sin configurar nada de infraestructura propia: `yarn deploy` (`nest deploy`) usa `@nestjs/mau` para desplegar directamente a NestJS Mau — requiere una cuenta de Mau vinculada y no reemplaza los pasos 1-2 de configurar la base de datos y las variables de entorno.
 
 ## Tests
 
