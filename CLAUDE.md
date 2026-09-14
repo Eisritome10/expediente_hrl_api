@@ -1,6 +1,6 @@
 ## What this project is
 
-`expediente_hrl_api` is a NestJS + Prisma REST API that tracks research protocols for Hospital Regional de Loreto (HRL). It replaces a legacy procedural-PHP system. Domain entities: `Researcher`, `Institution`, `Faculty`, `Destination`, `ResearchLine`, `Modality`, `User`, `Protocol`, `ProtocolReview` (Spanish equivalents: Investigador, Institución, Facultad, Destino, Línea de Investigación, Modalidad, Usuario, Protocolo, Revisión de Protocolo).
+`expediente_hrl_api` is a NestJS + Prisma REST API that tracks research protocols for Hospital Regional de Loreto (HRL). It replaces a legacy procedural-PHP system. Domain entities: `Researcher`, `Institution`, `Faculty`, `Destination`, `ResearchLine`, `Modality`, `StudyDesign`, `User`, `Protocol`, `ProtocolReview` (Spanish equivalents: Investigador, Institución, Facultad, Destino, Línea de Investigación, Modalidad, Diseño de Estudio, Usuario, Protocolo, Revisión de Protocolo).
 
 **This file documents the conventions actually implemented in `src/`.** If you're adding or changing a module, match what's already there over anything else — including older design notes (`guia-implementacion-nestjs-prisma-investigahrl.md`, `docs/modelo-datos-nestjs-prisma.md`) that predate the current code and use different folder/class names (`use-cases/`, `dto/`, `errors/`, Spanish class names). Those docs are historical context only; do not follow their naming when they conflict with this file or with existing code under `src/modules/`.
 
@@ -86,23 +86,23 @@ Entity/module folder names, class names, method names, and file names are always
 
 ## Prisma schema composition
 
-Prisma **model and field names are always English**, matching the implemented `Researcher`, `Institution`, `Faculty`, `Destination`, `ResearchLine`, `Modality`, `User`, `Protocol` models in `prisma/schema.prisma`. Every new model must follow the same convention:
+Prisma **model and field names are always English**, matching the implemented `Researcher`, `Institution`, `Faculty`, `Destination`, `ResearchLine`, `Modality`, `StudyDesign`, `User`, `Protocol` models in `prisma/schema.prisma`. Every new model must follow the same convention:
 
 - Primary key: `id String @id @default(uuid())` — never an `Int @default(autoincrement())` id.
 - Always include `createdAt DateTime @default(now())` and `updatedAt DateTime @updatedAt`.
 - Always add `@@map("<snake_case_plural>")` so the DB table name is explicit and decoupled from the PascalCase model name.
 - Unique/natural-key fields (`name`, `username`, `dni`, `description`) get `@unique` at the field level, or `@@unique([...])` at the model level for composite keys — this is exactly what each entity's "already exists" exception checks against (see `getUniqueConstraintTarget` in `common/utils/prisma-error.util.ts`).
-- Declare the inverse relation array (e.g. `protocols Protocol[]`) on every catalog entity referenced by `Protocol`, so the relation compiles both ways. N:N relations that carry their own data (coinvestigadores, asesores, destinos) go through an explicit join model (`ProtocolCoinvestigador`, `ProtocolAsesor`, `ProtocolDestino`), not an implicit Prisma many-to-many.
+- Declare the inverse relation array (e.g. `protocols Protocol[]`) on every catalog entity referenced by `Protocol`, so the relation compiles both ways. N:N relations that carry their own data (coinvestigadores, asesores, destinos, disenosEstudio) go through an explicit join model (`ProtocolCoinvestigador`, `ProtocolAsesor`, `ProtocolDestino`, `ProtocolStudyDesign`), not an implicit Prisma many-to-many.
 - After any schema change: run `yarn prisma:dev:migrate` (wraps `prisma migrate dev`) to create the migration and regenerate the client before wiring a module's features to it.
 
 ## Per-entity notes
 
 - **Researcher** — reference module, full CRUD, `ADMIN`-protected. Duplicate checks on both `dni` and `email`.
-- **Institution**, **Faculty**, **Destination**, **Modality** — simple CRUD, same template as `Researcher`, unique-name validation only (`Modality.fee` is not part of its uniqueness rule).
+- **Institution**, **Faculty**, **Destination**, **Modality**, **StudyDesign** — simple CRUD, same template as `Researcher`, unique-name validation only (`Modality.fee` is not part of its uniqueness rule). `StudyDesign` ("diseños de estudio") is a plain catalog kept editable via CRUD (not hardcoded/read-only) because the business asked to be able to add/rename entries without a deploy; it's referenced by `Protocol` as an N:N (see below), the same way `Destination` is.
 - **ResearchLine** — read-only on purpose (no create/edit screen exists in the legacy system; rows are inserted directly in the DB): only `ListResearchLinesFeature` (filterable by `type`) and `FindResearchLineByIdFeature`, `GET`-only controller. Add create/update/delete later only if the business asks for it.
 - **User** — model and seeder exist (`src/seeder/`, driven by `SEED_ADMIN_PASSWORD`); a full CRUD module is not implemented yet.
 - **Auth** — separate module (`src/modules/auth/`): `LoginFeature` and `RefreshTokenFeature`, Passport JWT strategies (`jwt-access`, `jwt-refresh`), `JwtAccessGuard`/`JwtRefreshGuard`/`RolesGuard`, and the `@UseAuth(...roles)` decorator that every other write controller uses. Passwords are hashed with `argon2`, never compared with `==`.
-- **Protocol** — core of the domain, highest complexity. `protocolo.rules.ts` holds the pure conditional-validation logic (convenio/enmienda/revisión HC rules), called from `CreateProtocolFeature`. N:N relations (coinvestigadores, asesores, destinos) arrive in the request DTO as id arrays and are written through the explicit join models via Prisma's `connect`/nested create.
+- **Protocol** — core of the domain, highest complexity. `protocolo.rules.ts` holds the pure conditional-validation logic (convenio/enmienda/revisión HC rules), called from `CreateProtocolFeature`. N:N relations (coinvestigadores, asesores, destinos, disenosEstudio/`studyDesignIds`) arrive in the request DTO as id arrays and are written through the explicit join models via Prisma's `connect`/nested create; each array is validated for existence and duplicates in `validateReferences` (`this.prisma.<model>.count({ where: { id: { in: ids } } })` compared against `new Set(ids).size`) before the `create` call.
 - **ProtocolReview** — not implemented yet; when added, follow the `Protocol` pattern (1:N history, never mutate a past revision, `usuarioRevisorId`/reviewer id comes from `req.user` via the auth guard, never a free-text field).
 
 ## How to apply a change without breaking structure or conventions
