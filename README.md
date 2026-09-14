@@ -28,16 +28,20 @@
 | `Faculty` (Facultad) | `/faculties` | CRUD completo | `ADMIN` |
 | `Destination` (Destino) | `/destinations` | CRUD completo | `ADMIN` |
 | `Modality` (Modalidad) | `/modalities` | CRUD completo | `ADMIN` |
+| `StudyDesign` (Diseño de Estudio) | `/study-designs` | CRUD completo | `ADMIN` |
 | `ResearchLine` (Línea de Investigación) | `/research-lines` | Solo lectura (`GET`, filtrable por `type`) | `ADMIN` |
 | `User` (Usuario) | — | Sin CRUD propio todavía; existe el modelo y un seeder de usuario admin inicial | — |
+| `Protocol` (Protocolo) | `/protocols` | `POST` (crear), `GET` (listar, filtrable), `GET /:id` | `ADMIN` |
 | `Auth` | `/auth/login`, `/auth/refresh` | Login y refresco de tokens | Pública (login) / Bearer refresh token (`/refresh`) |
 
-Todas las rutas de catálogo (`researchers`, `institutions`, `faculties`, `destinations`, `modalities`, `research-lines`) requieren un access token JWT válido y el rol `ADMIN`, vía el decorador compuesto `@UseAuth(UserRole.ADMIN)`.
+Todas las rutas de catálogo (`researchers`, `institutions`, `faculties`, `destinations`, `modalities`, `study-designs`, `research-lines`) y `protocols` requieren un access token JWT válido y el rol `ADMIN`, vía el decorador compuesto `@UseAuth(UserRole.ADMIN)`.
+
+Un protocolo puede tener varios diseños de estudio a la vez (relación N:N vía `ProtocolStudyDesign`, igual patrón que `destinos`/coinvestigadores/asesores): se envían como `studyDesignIds: string[]` al crear el protocolo y se devuelven como `disenosEstudio` en la respuesta.
 
 ### Pendiente (según la guía de migración, ver `guia-implementacion-nestjs-prisma-investigahrl.md`)
 
 - CRUD de `User` (el modelo y el login ya existen; falta el módulo de gestión de usuarios)
-- `Protocolo` — núcleo del dominio, con reglas de negocio condicionales y relaciones N:N
+- `Protocolo` — implementado `create`/`list`/`get`; falta `update`/`delete` si el negocio los requiere
 - `RevisionProtocolo` — historial de revisiones sobre `Protocolo`
 
 ## Arquitectura
