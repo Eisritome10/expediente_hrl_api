@@ -355,6 +355,24 @@ const modalities: { name: string; fee: string }[] = [
   { name: 'EXTRAINSTITUCIONAL', fee: '580' },
 ];
 
+// Ficticious test data for local/dev environments — there is no real HRL
+// researcher dataset available yet (the legacy investigahrl dump hasn't been
+// migrated). Replace this array once real data is available.
+const researchers: { dni: string; firstName: string; lastName: string; email: string; phone: string }[] = [
+  { dni: '90000001', firstName: 'JUAN CARLOS', lastName: 'RAMIREZ TORRES', email: 'juan.ramirez@example.com', phone: '987654321' },
+  { dni: '90000002', firstName: 'MARIA ELENA', lastName: 'FLORES VASQUEZ', email: 'maria.flores@example.com', phone: '987654322' },
+  { dni: '90000003', firstName: 'LUIS ALBERTO', lastName: 'GARCIA MENDOZA', email: 'luis.garcia@example.com', phone: '987654323' },
+  { dni: '90000004', firstName: 'ROSA ISABEL', lastName: 'SANCHEZ RUIZ', email: 'rosa.sanchez@example.com', phone: '987654324' },
+  { dni: '90000005', firstName: 'PEDRO ANTONIO', lastName: 'CHAVEZ ROJAS', email: 'pedro.chavez@example.com', phone: '987654325' },
+  { dni: '90000006', firstName: 'ANA LUCIA', lastName: 'VARGAS CASTRO', email: 'ana.vargas@example.com', phone: '987654326' },
+  { dni: '90000007', firstName: 'CARLOS EDUARDO', lastName: 'MORALES DIAZ', email: 'carlos.morales@example.com', phone: '987654327' },
+  { dni: '90000008', firstName: 'PATRICIA SOFIA', lastName: 'REYES ORTEGA', email: 'patricia.reyes@example.com', phone: '987654328' },
+  { dni: '90000009', firstName: 'JORGE LUIS', lastName: 'HERRERA SILVA', email: 'jorge.herrera@example.com', phone: '987654329' },
+  { dni: '90000010', firstName: 'CLAUDIA MARIA', lastName: 'NAVARRO PEREZ', email: 'claudia.navarro@example.com', phone: '987654330' },
+  { dni: '90000011', firstName: 'MIGUEL ANGEL', lastName: 'CASTILLO GOMEZ', email: 'miguel.castillo@example.com', phone: '987654331' },
+  { dni: '90000012', firstName: 'DIANA CAROLINA', lastName: 'JIMENEZ LOPEZ', email: 'diana.jimenez@example.com', phone: '987654332' },
+];
+
 async function seedFaculties(): Promise<void> {
   for (const name of faculties) {
     await prisma.faculty.upsert({ where: { name }, update: {}, create: { name } });
@@ -401,12 +419,23 @@ async function seedModalities(): Promise<void> {
   }
 }
 
+async function seedResearchers(): Promise<void> {
+  for (const researcher of researchers) {
+    await prisma.researcher.upsert({
+      where: { dni: researcher.dni },
+      update: researcher,
+      create: researcher,
+    });
+  }
+}
+
 async function main(): Promise<void> {
   await seedFaculties();
   await seedInstitutions();
   await seedDestinations();
   await seedResearchLines();
   await seedModalities();
+  await seedResearchers();
 }
 
 main()
