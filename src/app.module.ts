@@ -9,6 +9,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SeederModule } from './seeder/seeder.module';
 import { ResearchLineModule } from './modules/research-line/research-line.module';
 import { ModalityModule } from './modules/modality/modality.module';
+import { StudyDesignModule } from './modules/study-design/study-design.module';
 import { ProtocolModule } from './modules/protocol/protocol.module';
 
 @Module({
@@ -23,6 +24,7 @@ import { ProtocolModule } from './modules/protocol/protocol.module';
     DestinationModule,
     ResearchLineModule,
     ModalityModule,
+    StudyDesignModule,
     ProtocolModule,
   ],
 })

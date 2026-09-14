@@ -13,7 +13,6 @@ export type CreateProtocolInput = {
   nroExpediente: string;
   fechaRecepcion: Date;
   titulo: string;
-  disenoEstudio: string;
   lugarEjecucion: string;
   esInstitucional: boolean;
   investigadorPrincipalId: string;
@@ -22,6 +21,7 @@ export type CreateProtocolInput = {
   institucionId: string | null;
   facultadId: string | null;
   destinoIds: string[];
+  studyDesignIds: string[];
   lineaHrlId: string;
   lineaMeta2030Id: string;
   modalidadId: string;
@@ -54,7 +54,6 @@ export class CreateProtocolFeature {
           nroExpediente: input.nroExpediente,
           fechaRecepcion: input.fechaRecepcion,
           titulo: input.titulo,
-          disenoEstudio: input.disenoEstudio,
           lugarEjecucion: input.lugarEjecucion,
           esInstitucional: input.esInstitucional,
           investigadorPrincipal: { connect: { id: input.investigadorPrincipalId } },
@@ -79,6 +78,7 @@ export class CreateProtocolFeature {
           coinvestigadores: { create: input.coinvestigadorIds.map((researcherId) => ({ researcherId })) },
           asesores: { create: input.asesorIds.map((researcherId) => ({ researcherId })) },
           destinos: { create: rules.destinoIds.map((destinationId) => ({ destinationId })) },
+          disenosEstudio: { create: input.studyDesignIds.map((studyDesignId) => ({ studyDesignId })) },
         },
         include: PROTOCOL_INCLUDE,
       });
@@ -104,6 +104,7 @@ export class CreateProtocolFeature {
       coinvestigadoresCount,
       asesoresCount,
       destinosCount,
+      studyDesignsCount,
     ] = await Promise.all([
       this.prisma.researcher.findUnique({ where: { id: input.investigadorPrincipalId } }),
       input.institucionId ? this.prisma.institution.findUnique({ where: { id: input.institucionId } }) : null,
@@ -116,6 +117,9 @@ export class CreateProtocolFeature {
         : 0,
       input.asesorIds.length ? this.prisma.researcher.count({ where: { id: { in: input.asesorIds } } }) : 0,
       input.destinoIds.length ? this.prisma.destination.count({ where: { id: { in: input.destinoIds } } }) : 0,
+      input.studyDesignIds.length
+        ? this.prisma.studyDesign.count({ where: { id: { in: input.studyDesignIds } } })
+        : 0,
     ]);
 
     if (!investigador) throw new ProtocolInvalidReferenceException('Researcher', input.investigadorPrincipalId);
@@ -146,6 +150,9 @@ export class CreateProtocolFeature {
     }
     if (destinosCount !== new Set(input.destinoIds).size) {
       throw new ProtocolInvalidReferenceException('Destination', 'destinoIds');
+    }
+    if (studyDesignsCount !== new Set(input.studyDesignIds).size) {
+      throw new ProtocolInvalidReferenceException('StudyDesign', 'studyDesignIds');
     }
   }
 }

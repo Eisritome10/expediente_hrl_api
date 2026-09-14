@@ -17,6 +17,7 @@ describe('CreateProtocolFeature', () => {
     researchLine: { findUnique: jest.fn() },
     modality: { findUnique: jest.fn() },
     destination: { count: jest.fn() },
+    studyDesign: { count: jest.fn() },
     protocol: { create: jest.fn() },
   } as unknown as PrismaService;
 
@@ -26,7 +27,6 @@ describe('CreateProtocolFeature', () => {
     nroExpediente: '542/2026',
     fechaRecepcion: new Date('2026-01-15'),
     titulo: 'ESTUDIO DE PRUEBA',
-    disenoEstudio: 'DESCRIPTIVO',
     lugarEjecucion: 'HRL',
     esInstitucional: true,
     investigadorPrincipalId: 'r1',
@@ -35,6 +35,7 @@ describe('CreateProtocolFeature', () => {
     institucionId: 'i1',
     facultadId: 'f1',
     destinoIds: ['d1'],
+    studyDesignIds: ['sd1'],
     lineaHrlId: 'lh1',
     lineaMeta2030Id: 'lm1',
     modalidadId: 'm1',
@@ -63,6 +64,7 @@ describe('CreateProtocolFeature', () => {
     (prisma.modality.findUnique as jest.Mock).mockResolvedValue({ id: 'm1' });
     (prisma.researcher.count as jest.Mock).mockResolvedValue(1);
     (prisma.destination.count as jest.Mock).mockResolvedValue(1);
+    (prisma.studyDesign.count as jest.Mock).mockResolvedValue(1);
   };
 
   beforeEach(() => {
@@ -88,6 +90,7 @@ describe('CreateProtocolFeature', () => {
           coinvestigadores: { create: [{ researcherId: 'r2' }] },
           asesores: { create: [{ researcherId: 'r3' }] },
           destinos: { create: [{ destinationId: 'd1' }] },
+          disenosEstudio: { create: [{ studyDesignId: 'sd1' }] },
         }),
       }),
     );
@@ -144,6 +147,13 @@ describe('CreateProtocolFeature', () => {
   it('throws ProtocolInvalidReferenceException when a destino id does not exist', async () => {
     mockValidReferences();
     (prisma.destination.count as jest.Mock).mockResolvedValue(0);
+
+    await expect(feature.execute(input)).rejects.toBeInstanceOf(ProtocolInvalidReferenceException);
+  });
+
+  it('throws ProtocolInvalidReferenceException when a study design id does not exist', async () => {
+    mockValidReferences();
+    (prisma.studyDesign.count as jest.Mock).mockResolvedValue(0);
 
     await expect(feature.execute(input)).rejects.toBeInstanceOf(ProtocolInvalidReferenceException);
   });

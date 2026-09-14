@@ -30,12 +30,6 @@ export class CreateProtocolRequestDto {
   @UpperCase()
   titulo: string;
 
-  @ApiProperty({ description: 'Diseño del estudio', example: 'Descriptivo transversal' })
-  @IsString()
-  @Length(1, 255)
-  @UpperCase()
-  disenoEstudio: string;
-
   @ApiProperty({ description: 'Lugar de ejecución', example: 'Hospital Regional de Loreto' })
   @IsString()
   @Length(1, 255)
@@ -81,6 +75,13 @@ export class CreateProtocolRequestDto {
   @ArrayUnique()
   @IsUUID('all', { each: true })
   destinoIds?: string[];
+
+  @ApiPropertyOptional({ description: 'Ids de diseños de estudio', type: [String], default: [] })
+  @IsOptional()
+  @IsArray()
+  @ArrayUnique()
+  @IsUUID('all', { each: true })
+  studyDesignIds?: string[];
 
   @ApiProperty({ description: 'Id de la línea de investigación HRL' })
   @IsUUID()
