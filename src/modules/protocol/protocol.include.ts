@@ -10,6 +10,7 @@ export const PROTOCOL_INCLUDE = {
   coinvestigadores: { include: { researcher: true } },
   asesores: { include: { researcher: true } },
   destinos: { include: { destination: true } },
+  disenosEstudio: { include: { studyDesign: true } },
 } satisfies Prisma.ProtocolInclude;
 
 export type ProtocolWithRelations = Prisma.ProtocolGetPayload<{ include: typeof PROTOCOL_INCLUDE }>;

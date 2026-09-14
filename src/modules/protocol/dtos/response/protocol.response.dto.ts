@@ -60,7 +60,6 @@ export class ProtocolResponseDto {
   @ApiProperty() readonly nroExpediente: string;
   @ApiProperty() readonly fechaRecepcion: Date;
   @ApiProperty() readonly titulo: string;
-  @ApiProperty() readonly disenoEstudio: string;
   @ApiProperty() readonly lugarEjecucion: string;
   @ApiProperty() readonly esInstitucional: boolean;
 
@@ -81,6 +80,9 @@ export class ProtocolResponseDto {
 
   @ApiProperty({ type: ProtocolRelatedEntityResponseDto, isArray: true })
   readonly destinos: ProtocolRelatedEntityResponseDto[];
+
+  @ApiProperty({ type: ProtocolRelatedEntityResponseDto, isArray: true })
+  readonly disenosEstudio: ProtocolRelatedEntityResponseDto[];
 
   @ApiProperty({ type: ProtocolRelatedEntityResponseDto })
   readonly lineaHrl: ProtocolRelatedEntityResponseDto;
@@ -116,7 +118,6 @@ export class ProtocolResponseDto {
     nroExpediente: string,
     fechaRecepcion: Date,
     titulo: string,
-    disenoEstudio: string,
     lugarEjecucion: string,
     esInstitucional: boolean,
     investigadorPrincipal: ProtocolRelatedResearcherResponseDto,
@@ -125,6 +126,7 @@ export class ProtocolResponseDto {
     institucion: ProtocolRelatedEntityResponseDto | null,
     facultad: ProtocolRelatedEntityResponseDto | null,
     destinos: ProtocolRelatedEntityResponseDto[],
+    disenosEstudio: ProtocolRelatedEntityResponseDto[],
     lineaHrl: ProtocolRelatedEntityResponseDto,
     lineaMeta2030: ProtocolRelatedEntityResponseDto,
     modalidad: ProtocolRelatedModalityResponseDto,
@@ -148,7 +150,6 @@ export class ProtocolResponseDto {
     this.nroExpediente = nroExpediente;
     this.fechaRecepcion = fechaRecepcion;
     this.titulo = titulo;
-    this.disenoEstudio = disenoEstudio;
     this.lugarEjecucion = lugarEjecucion;
     this.esInstitucional = esInstitucional;
     this.investigadorPrincipal = investigadorPrincipal;
@@ -157,6 +158,7 @@ export class ProtocolResponseDto {
     this.institucion = institucion;
     this.facultad = facultad;
     this.destinos = destinos;
+    this.disenosEstudio = disenosEstudio;
     this.lineaHrl = lineaHrl;
     this.lineaMeta2030 = lineaMeta2030;
     this.modalidad = modalidad;
@@ -183,7 +185,6 @@ export class ProtocolResponseDto {
       protocol.nroExpediente,
       protocol.fechaRecepcion,
       protocol.titulo,
-      protocol.disenoEstudio,
       protocol.lugarEjecucion,
       protocol.esInstitucional,
       ProtocolRelatedResearcherResponseDto.from(protocol.investigadorPrincipal),
@@ -192,6 +193,7 @@ export class ProtocolResponseDto {
       protocol.institucion ? ProtocolRelatedEntityResponseDto.of(protocol.institucion.id, protocol.institucion.name) : null,
       protocol.facultad ? ProtocolRelatedEntityResponseDto.of(protocol.facultad.id, protocol.facultad.name) : null,
       protocol.destinos.map((d) => ProtocolRelatedEntityResponseDto.of(d.destination.id, d.destination.description)),
+      protocol.disenosEstudio.map((d) => ProtocolRelatedEntityResponseDto.of(d.studyDesign.id, d.studyDesign.name)),
       ProtocolRelatedEntityResponseDto.of(protocol.lineaHrl.id, protocol.lineaHrl.name),
       ProtocolRelatedEntityResponseDto.of(protocol.lineaMeta2030.id, protocol.lineaMeta2030.name),
       ProtocolRelatedModalityResponseDto.of(protocol.modalidad.id, protocol.modalidad.name, Number(protocol.modalidad.fee)),

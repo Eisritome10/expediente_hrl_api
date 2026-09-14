@@ -108,6 +108,18 @@ model ResearchLine {
   @@map("research_lines")
 }
 
+model StudyDesign {
+  id   String @id @default(uuid())
+  name String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  protocolStudyDesigns ProtocolStudyDesign[]
+
+  @@map("study_designs")
+}
+
 model Modality {
   id   String  @id @default(uuid())
   name String  @unique
@@ -127,7 +139,6 @@ model Protocol {
   nroExpediente   String   @unique
   fechaRecepcion  DateTime
   titulo          String
-  disenoEstudio   String
   lugarEjecucion  String
   esInstitucional Boolean  @default(true)
 
@@ -170,6 +181,7 @@ model Protocol {
   coinvestigadores ProtocolCoinvestigador[]
   asesores         ProtocolAsesor[]
   destinos         ProtocolDestino[]
+  disenosEstudio   ProtocolStudyDesign[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -205,4 +217,14 @@ model ProtocolDestino {
 
   @@id([protocolId, destinationId])
   @@map("protocol_destinos")
+}
+
+model ProtocolStudyDesign {
+  protocolId    String
+  protocol      Protocol    @relation(fields: [protocolId], references: [id], onDelete: Cascade)
+  studyDesignId String
+  studyDesign   StudyDesign @relation(fields: [studyDesignId], references: [id])
+
+  @@id([protocolId, studyDesignId])
+  @@map("protocol_study_designs")
 }

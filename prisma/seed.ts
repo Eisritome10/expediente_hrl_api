@@ -349,6 +349,19 @@ const researchLines: { name: string; type: LineType }[] = [
   },
 ];
 
+const studyDesigns: string[] = [
+  'DESCRIPTIVO TRANSVERSAL',
+  'DESCRIPTIVO LONGITUDINAL',
+  'COHORTE',
+  'CASO-CONTROL',
+  'ENSAYO CLINICO',
+  'REVISION SISTEMATICA',
+  'REPORTE DE CASO',
+  'SERIE DE CASOS',
+  'ESTUDIO CUALITATIVO',
+  'ESTUDIO MIXTO',
+];
+
 const modalities: { name: string; fee: string }[] = [
   { name: 'PREGRADO', fee: '50' },
   { name: 'POSGRADO', fee: '150' },
@@ -409,6 +422,12 @@ async function seedResearchLines(): Promise<void> {
   }
 }
 
+async function seedStudyDesigns(): Promise<void> {
+  for (const name of studyDesigns) {
+    await prisma.studyDesign.upsert({ where: { name }, update: {}, create: { name } });
+  }
+}
+
 async function seedModalities(): Promise<void> {
   for (const modality of modalities) {
     await prisma.modality.upsert({
@@ -435,6 +454,7 @@ async function main(): Promise<void> {
   await seedDestinations();
   await seedResearchLines();
   await seedModalities();
+  await seedStudyDesigns();
   await seedResearchers();
 }
 

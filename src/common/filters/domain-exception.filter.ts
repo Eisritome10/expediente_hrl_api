@@ -20,6 +20,8 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.RESEARCH_LINE_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.MODALITY_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.MODALITY_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+    [DomainErrorCode.STUDY_DESIGN_NOT_FOUND]: HttpStatus.NOT_FOUND,
+    [DomainErrorCode.STUDY_DESIGN_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.PROTOCOL_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.PROTOCOL_NRO_EXPEDIENTE_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.PROTOCOL_INVALID_REFERENCE]: HttpStatus.BAD_REQUEST,
