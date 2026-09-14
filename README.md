@@ -107,6 +107,13 @@ $ yarn prisma:dev:migrate
 # ejecutar el seeder (crea el usuario admin inicial si no existe)
 $ yarn prisma:dev:seed
 
+# restaurar la base de datos: la borra y reaplica todas las migraciones desde
+# cero (pide confirmación salvo --force). No corre el seed de catálogo
+# automáticamente en este proyecto — correr `yarn prisma:dev:seed` después
+# (y levantar la app con `yarn start:dev` para que el SeederService cree el
+# usuario admin inicial)
+$ yarn prisma:dev:reset
+
 # explorar la base de datos con Prisma Studio
 $ yarn prisma:dev:studio
 ```

@@ -21,7 +21,8 @@
     "test:e2e": "cross-env NODE_ENV=test NODE_OPTIONS=--experimental-vm-modules jest --config ./test/jest-e2e.json",
     "prisma:dev:migrate": "dotenv -e .env.development -- prisma migrate dev",
     "prisma:dev:studio": "dotenv -e .env.development -- prisma studio",
-    "prisma:dev:seed": "dotenv -e .env.development -- prisma db seed"
+    "prisma:dev:seed": "dotenv -e .env.development -- prisma db seed",
+    "prisma:dev:reset": "dotenv -e .env.development -- prisma migrate reset"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
