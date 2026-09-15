@@ -71,6 +71,12 @@ Piezas compartidas relevantes:
 
 Ver [CLAUDE.md](CLAUDE.md) para las convenciones completas (nomenclatura, plantilla de módulo, composición del schema de Prisma) que debe seguir cualquier módulo nuevo.
 
+## Requisitos previos
+
+- **Node.js** 20 o superior.
+- **Yarn** — gestor de paquetes oficial del proyecto (`yarn.lock` está commiteado). **Importante:** no usar `npm install`, ya que generaría un `package-lock.json` desincronizado del lockfile del repo. Si no lo tienes instalado: `corepack enable` (viene con Node ≥ 16.10) o `npm install -g yarn`.
+- **Docker** (con Docker Compose) — para levantar PostgreSQL en local vía `compose.yml`. Si ya tienes un PostgreSQL propio corriendo, puedes omitir este paso y apuntar `DATABASE_URL` a esa instancia.
+
 ## Configuración del entorno
 
 ```bash
@@ -92,21 +98,45 @@ Variables requeridas (ver `.env.example`):
 
 `.env.<NODE_ENV>` se elige automáticamente según el script (`dotenv -e .env.development`, `.env.test`, etc.) — no hace falta exportar `NODE_ENV` a mano salvo en producción, donde los scripts `build`/`start`/`deploy` ya lo fijan a `production` (los secretos en ese caso deben venir del entorno del host, no de un archivo `.env` versionado).
 
-## Instalación
+## Puesta en marcha en desarrollo (local)
+
+Con los [requisitos previos](#requisitos-previos) instalados y el `.env.development` ya configurado, sigue estos pasos en orden:
+
+1. **Instalar dependencias** (siempre con Yarn, nunca `npm install`):
+   ```bash
+   $ yarn install
+   ```
+
+2. **Levantar PostgreSQL con Docker Compose:**
+   ```bash
+   $ docker compose up -d
+   ```
+   Esto arranca un contenedor `postgres:17-alpine` (servicio `postgres` en [compose.yml](compose.yml)) expuesto en `localhost:5432`, con los datos persistidos en el volumen `postgres_data`. Asegúrate de que `DATABASE_URL` en tu `.env.development` apunte a esta instancia (usuario, password y nombre de base definidos en `compose.yml`).
+
+3. **Generar el cliente de Prisma** a partir del schema:
+   ```bash
+   $ npx prisma generate
+   ```
+
+4. **Aplicar las migraciones** en la base de desarrollo:
+   ```bash
+   $ yarn prisma:dev:migrate
+   ```
+
+5. **Ejecutar el seed** (crea el usuario `admin` inicial y, si corresponde, datos de catálogo):
+   ```bash
+   $ yarn prisma:dev:seed
+   ```
+
+6. **Correr el proyecto:**
+   ```bash
+   $ yarn start:dev
+   ```
+   Al arrancar, el `SeederService` también crea automáticamente el usuario `admin` (rol `ADMIN`) si no existe, usando `SEED_ADMIN_PASSWORD`. Con ese usuario se obtiene el primer access token vía `POST /auth/login`. La documentación interactiva (Swagger) queda disponible en `/api/docs` y todas las rutas de negocio cuelgan del prefijo global `/api/v1`.
+
+### Otros comandos útiles de base de datos
 
 ```bash
-$ yarn install
-```
-
-## Base de datos
-
-```bash
-# aplicar migraciones pendientes en desarrollo
-$ yarn prisma:dev:migrate
-
-# ejecutar el seeder (crea el usuario admin inicial si no existe)
-$ yarn prisma:dev:seed
-
 # restaurar la base de datos: la borra y reaplica todas las migraciones desde
 # cero (pide confirmación salvo --force). No corre el seed de catálogo
 # automáticamente en este proyecto — correr `yarn prisma:dev:seed` después
@@ -117,14 +147,6 @@ $ yarn prisma:dev:reset
 # explorar la base de datos con Prisma Studio
 $ yarn prisma:dev:studio
 ```
-
-## Ejecutar el proyecto en desarrollo
-
-```bash
-$ yarn start:dev
-```
-
-Al arrancar, el `SeederService` crea automáticamente un usuario `admin` (rol `ADMIN`) si no existe, usando `SEED_ADMIN_PASSWORD`. Con ese usuario se obtiene el primer access token vía `POST /auth/login`. La documentación interactiva (Swagger) queda disponible en `/api/docs` y todas las rutas de negocio cuelgan del prefijo global `/api/v1`.
 
 ## Despliegue a producción
 
