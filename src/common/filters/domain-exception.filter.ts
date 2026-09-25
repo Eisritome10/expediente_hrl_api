@@ -17,7 +17,10 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.DESTINATION_DESCRIPTION_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.INVALID_CREDENTIALS]: HttpStatus.UNAUTHORIZED,
     [DomainErrorCode.USER_INACTIVE]: HttpStatus.FORBIDDEN,
+
     [DomainErrorCode.RESEARCH_LINE_NOT_FOUND]: HttpStatus.NOT_FOUND,
+    [DomainErrorCode.RESEARCH_LINE_NAME_AND_TYPE_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+
     [DomainErrorCode.MODALITY_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.MODALITY_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.STUDY_DESIGN_NOT_FOUND]: HttpStatus.NOT_FOUND,
