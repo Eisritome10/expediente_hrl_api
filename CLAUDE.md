@@ -100,7 +100,7 @@ Prisma **model and field names are always English**, matching the implemented `R
 - **Researcher** — reference module, full CRUD, `ADMIN`-protected. Duplicate checks on both `dni` and `email`.
 - **Institution**, **Faculty**, **Destination**, **Modality**, **StudyDesign** — simple CRUD, same template as `Researcher`, unique-name validation only (`Modality.fee` is not part of its uniqueness rule). `StudyDesign` ("diseños de estudio") is a plain catalog kept editable via CRUD (not hardcoded/read-only) because the business asked to be able to add/rename entries without a deploy; it's referenced by `Protocol` as an N:N (see below), the same way `Destination` is.
 - **ResearchLine** — read-only on purpose (no create/edit screen exists in the legacy system; rows are inserted directly in the DB): only `ListResearchLinesFeature` (filterable by `type`) and `FindResearchLineByIdFeature`, `GET`-only controller. Add create/update/delete later only if the business asks for it.
-- **User** — model and seeder exist (`src/seeder/`, driven by `SEED_ADMIN_PASSWORD`); a full CRUD module is not implemented yet.
+- **User** — full CRUD, `ADMIN`-protected, same template as `Researcher`. `username` is immutable on update (like `Researcher.dni`); password changes are out of scope for the update endpoint (no password field on `PATCH`). Passwords are hashed with `argon2` in `CreateUserFeature`; `UserResponseDto` never exposes `passwordHash`. Seeder (`src/seeder/`, driven by `SEED_ADMIN_PASSWORD`) still owns the initial admin user.
 - **Auth** — separate module (`src/modules/auth/`): `LoginFeature` and `RefreshTokenFeature`, Passport JWT strategies (`jwt-access`, `jwt-refresh`), `JwtAccessGuard`/`JwtRefreshGuard`/`RolesGuard`, and the `@UseAuth(...roles)` decorator that every other write controller uses. Passwords are hashed with `argon2`, never compared with `==`.
 - **Protocol** — core of the domain, highest complexity. `protocolo.rules.ts` holds the pure conditional-validation logic (convenio/enmienda/revisión HC rules), called from `CreateProtocolFeature`. N:N relations (coinvestigadores, asesores, destinos, disenosEstudio/`studyDesignIds`) arrive in the request DTO as id arrays and are written through the explicit join models via Prisma's `connect`/nested create; each array is validated for existence and duplicates in `validateReferences` (`this.prisma.<model>.count({ where: { id: { in: ids } } })` compared against `new Set(ids).size`) before the `create` call.
 - **ProtocolReview** — not implemented yet; when added, follow the `Protocol` pattern (1:N history, never mutate a past revision, `usuarioRevisorId`/reviewer id comes from `req.user` via the auth guard, never a free-text field).
@@ -118,7 +118,20 @@ Before writing code, locate the closest existing analog (usually `researcher/` f
 7. **Tests** — add a `<feature-name>.feature.spec.ts` under `features/test/` colocated with the feature, following the mocking style already used by sibling specs (mock `PrismaService`, assert on the exception thrown for each failure branch).
 8. **Naming sanity check before committing**: everything under `src/` — folders, classes, files, Prisma models/fields — must read in English; only Swagger summaries, validation messages, and comments explaining a domain rule may be in Spanish. If a new name doesn't have an obvious English equivalent already used elsewhere in the codebase, check `prisma/schema.prisma` and the closest sibling module before inventing one.
 
+## AI development pipeline
+
+For a full requirement (not a one-line change or exploration), use the `dev-pipeline` skill (`.claude/skills/dev-pipeline/SKILL.md`): it runs researcher → planner → implementer → validation (`yarn lint`/`test`/`build`) → reviewer → fixer, stopping to ask for a human decision on ambiguity, architecture changes, or after 2 failed review iterations. The five roles are defined in `.claude/agents/`.
+
 ## Suggested build order for what's still missing
 
-1. `User` CRUD module (model + login already exist).
-2. `ProtocolReview` — depends on `Protocol` and `auth` (reviewer user comes from the authenticated session).
+1. `ProtocolReview` — depends on `Protocol` and `auth` (reviewer user comes from the authenticated session).
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
