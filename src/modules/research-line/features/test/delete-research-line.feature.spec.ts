@@ -3,6 +3,7 @@ import { PrismaService } from '../../../../prisma/prisma.service';
 import { DeleteResearchLineFeature } from '../delete-research-line.feature';
 import { FindResearchLineByIdFeature } from '../find-research-line-by-id.feature';
 import { ResearchLineNotFoundException } from '../../exceptions/research-line-not-found.exception';
+import { ResearchLineInUseByProtocolException } from '../../exceptions/research-line-in-use-by-protocol.exception';
 
 describe('DeleteResearchLineFeature', () => {
   const prisma = { researchLine: { delete: jest.fn() } } as unknown as PrismaService;
@@ -42,7 +43,7 @@ describe('DeleteResearchLineFeature', () => {
     expect(prisma.researchLine.delete).not.toHaveBeenCalled();
   });
 
-  it('propagates the foreign key error when the research line is being used by a protocol', async () => {
+  it('throws ResearchLineInUseByProtocolException when the research line is being used by a protocol', async () => {
     (findResearchLineByIdFeature.execute as jest.Mock).mockResolvedValue({
       id: 'rl1',
     });
@@ -59,7 +60,9 @@ describe('DeleteResearchLineFeature', () => {
       foreignKeyError,
     );
 
-    await expect(feature.execute('rl1')).rejects.toBe(foreignKeyError);
+    await expect(feature.execute('rl1')).rejects.toBeInstanceOf(
+      ResearchLineInUseByProtocolException,
+    );
 
     expect(prisma.researchLine.delete).toHaveBeenCalledWith({
       where: { id: 'rl1' },

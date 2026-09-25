@@ -45,10 +45,7 @@ export class ResearchLineController {
   @ApiOkResponse({ type: ResearchLineResponseDto })
   @ApiNotFoundResponse({ description: 'La línea de investigación no existe' })
   async update(@Param('id') id: string, @Body() body: UpdateResearchLineRequestDto): Promise<ResearchLineResponseDto> {
-    const researchLine = await this.updateResearchLineFeature.execute(id, {
-      name: body.name,
-      type: body.type,
-    });
+    const researchLine = await this.updateResearchLineFeature.execute(id, body);  
 
     return ResearchLineResponseDto.from(researchLine);
   }
