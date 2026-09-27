@@ -1,0 +1,6 @@
+{
+  "version": "1",
+  "name": "expediente_hrl_api",
+  "type": "collection",
+  "ignore": ["node_modules", ".git"]
+}

@@ -1,0 +1,15 @@
+meta {
+  name: 02-list-protocols-filtered
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/protocols?status=CREATED&nroExpediente=BRUNO
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+}

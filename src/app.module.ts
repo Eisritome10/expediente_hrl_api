@@ -11,7 +11,9 @@ import { SeederModule } from './seeder/seeder.module';
 import { ResearchLineModule } from './modules/research-line/research-line.module';
 import { ModalityModule } from './modules/modality/modality.module';
 import { StudyDesignModule } from './modules/study-design/study-design.module';
+import { AgreementModule } from './modules/agreement/agreement.module';
 import { ProtocolModule } from './modules/protocol/protocol.module';
+import { ProtocolReviewModule } from './modules/protocol-review/protocol-review.module';
 
 @Module({
   imports: [
@@ -27,7 +29,9 @@ import { ProtocolModule } from './modules/protocol/protocol.module';
     ResearchLineModule,
     ModalityModule,
     StudyDesignModule,
+    AgreementModule,
     ProtocolModule,
+    ProtocolReviewModule,
   ],
 })
 export class AppModule {}

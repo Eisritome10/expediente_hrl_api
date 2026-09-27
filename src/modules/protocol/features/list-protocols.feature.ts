@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, ProtocolStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { resolvePagination } from '../../../common/utils/pagination.util';
 import { PROTOCOL_INCLUDE, ProtocolWithRelations } from '../protocol.include';
@@ -9,6 +9,7 @@ export type ListProtocolsFilters = {
   investigadorPrincipalId?: string;
   fechaRecepcionDesde?: Date;
   fechaRecepcionHasta?: Date;
+  status?: ProtocolStatus;
 };
 
 export type ListProtocolsResult = {
@@ -32,6 +33,7 @@ export class ListProtocolsFeature {
         filters.fechaRecepcionDesde || filters.fechaRecepcionHasta
           ? { gte: filters.fechaRecepcionDesde, lte: filters.fechaRecepcionHasta }
           : undefined,
+      status: filters.status,
     };
 
     const [data, total] = await Promise.all([

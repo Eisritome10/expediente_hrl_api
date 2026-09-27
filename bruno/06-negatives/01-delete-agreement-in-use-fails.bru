@@ -1,0 +1,15 @@
+meta {
+  name: 01-delete-agreement-in-use-fails
+  type: http
+  seq: 1
+}
+
+delete {
+  url: {{baseUrl}}/agreements/{{convenioId}}
+  auth: inherit
+}
+
+assert {
+  res.status: eq 409
+  res.body.errorCode: eq AGREEMENT_IN_USE_BY_PROTOCOL
+}

@@ -1,5 +1,6 @@
-import { IsDateString, IsOptional, IsString, IsUUID } from 'class-validator';
+import { IsDateString, IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ProtocolStatus } from '@prisma/client';
 import { PaginateQueryDto } from '../../../../common/dtos/request/paginate-query.request.dto';
 
 export class ListProtocolsQueryDto extends PaginateQueryDto {
@@ -22,4 +23,9 @@ export class ListProtocolsQueryDto extends PaginateQueryDto {
   @IsOptional()
   @IsDateString()
   fechaRecepcionHasta?: string;
+
+  @ApiPropertyOptional({ enum: ProtocolStatus, description: 'Filtrar por estado del protocolo' })
+  @IsOptional()
+  @IsEnum(ProtocolStatus)
+  status?: ProtocolStatus;
 }

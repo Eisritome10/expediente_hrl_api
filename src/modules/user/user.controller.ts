@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -88,6 +89,7 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'Id del usuario' })
   @ApiNoContentResponse()
   @ApiNotFoundResponse({ description: 'El usuario no existe' })
+  @ApiConflictResponse({ description: 'El usuario está referenciado por una revisión de protocolo' })
   async remove(@Param('id') id: string): Promise<void> {
     await this.deleteUserFeature.execute(id);
   }

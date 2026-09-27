@@ -50,6 +50,18 @@ model Faculty {
   @@map("faculties")
 }
 
+model Agreement {
+  id   String @id @default(uuid())
+  name String @unique
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  protocols Protocol[]
+
+  @@map("agreements")
+}
+
 model Destination {
   id          String @id @default(uuid())
   description String @unique
@@ -84,6 +96,8 @@ model User {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  protocolReviews ProtocolReview[]
 
   @@map("users")
 }
@@ -133,8 +147,17 @@ model Modality {
   @@map("modalities")
 }
 
+enum ProtocolStatus {
+  CREATED
+  OBSERVED
+  CORRECTED
+  FINALIZED
+}
+
 model Protocol {
   id String @id @default(uuid())
+
+  status ProtocolStatus @default(CREATED)
 
   nroExpediente   String   @unique
   fechaRecepcion  DateTime
@@ -150,6 +173,9 @@ model Protocol {
 
   facultadId String?
   facultad   Faculty? @relation(fields: [facultadId], references: [id])
+
+  convenioId String?
+  convenio   Agreement? @relation(fields: [convenioId], references: [id], onDelete: Restrict)
 
   lineaHrlId String
   lineaHrl   ResearchLine @relation("ProtocolLineaHrl", fields: [lineaHrlId], references: [id])
@@ -168,9 +194,6 @@ model Protocol {
 
   esEnmienda Boolean @default(false)
 
-  esConvenio     Boolean @default(false)
-  nombreConvenio String?
-
   requiereRevisionHc Boolean  @default(false)
   montoHc            Decimal? @db.Decimal(10, 2)
   tipoComprobanteHc  String?
@@ -182,11 +205,30 @@ model Protocol {
   asesores         ProtocolAsesor[]
   destinos         ProtocolDestino[]
   disenosEstudio   ProtocolStudyDesign[]
+  reviews          ProtocolReview[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("protocols")
+}
+
+model ProtocolReview {
+  id String @id @default(uuid())
+
+  protocolId String
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Restrict)
+
+  reviewerId String
+  reviewer   User @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
+
+  status       ProtocolStatus
+  observations String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("protocol_reviews")
 }
 
 model ProtocolCoinvestigador {

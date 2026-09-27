@@ -1,7 +1,9 @@
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { DeleteUserFeature } from '../delete-user.feature';
 import { FindUserByIdFeature } from '../find-user-by-id.feature';
 import { UserNotFoundException } from '../../exceptions/user-not-found.exception';
+import { UserInUseByProtocolReviewException } from '../../exceptions/user-in-use-by-protocol-review.exception';
 
 describe('DeleteUserFeature', () => {
   const prisma = { user: { delete: jest.fn() } } as unknown as PrismaService;
@@ -27,5 +29,25 @@ describe('DeleteUserFeature', () => {
 
     await expect(feature.execute('missing')).rejects.toBeInstanceOf(UserNotFoundException);
     expect(prisma.user.delete).not.toHaveBeenCalled();
+  });
+
+  it('throws UserInUseByProtocolReviewException when the user is referenced by a protocol review', async () => {
+    (findUserByIdFeature.execute as jest.Mock).mockResolvedValue({ id: 'u1' });
+
+    const foreignKeyError = new Prisma.PrismaClientKnownRequestError('Foreign key constraint failed', {
+      code: 'P2003',
+      clientVersion: '7.10.0',
+    });
+    (prisma.user.delete as jest.Mock).mockRejectedValue(foreignKeyError);
+
+    await expect(feature.execute('u1')).rejects.toBeInstanceOf(UserInUseByProtocolReviewException);
+  });
+
+  it('rethrows errors that are not a foreign key violation', async () => {
+    (findUserByIdFeature.execute as jest.Mock).mockResolvedValue({ id: 'u1' });
+    const error = new Error('unexpected');
+    (prisma.user.delete as jest.Mock).mockRejectedValue(error);
+
+    await expect(feature.execute('u1')).rejects.toBe(error);
   });
 });

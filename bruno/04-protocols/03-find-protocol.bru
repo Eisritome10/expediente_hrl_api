@@ -1,0 +1,16 @@
+meta {
+  name: 03-find-protocol
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/protocols/{{protocolId}}
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{protocolId}}
+  res.body.status: eq CREATED
+}

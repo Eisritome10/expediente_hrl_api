@@ -1,0 +1,25 @@
+meta {
+  name: 02-create-faculty
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/faculties
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "name": "FACULTAD BRUNO {{runId}}"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) bru.setVar("facultadId", res.body.id);
+}
+
+assert {
+  res.status: eq 201
+}

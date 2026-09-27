@@ -1,0 +1,15 @@
+meta {
+  name: 04-protocol-status-is-observed
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/protocols/{{protocolId}}
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq OBSERVED
+}

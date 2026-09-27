@@ -1,0 +1,22 @@
+meta {
+  name: 07-patch-again-while-corrected-fails
+  type: http
+  seq: 7
+}
+
+patch {
+  url: {{baseUrl}}/protocols/{{protocolId}}
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "titulo": "No deberia poder corregirse dos veces seguidas"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.errorCode: eq PROTOCOL_NOT_OBSERVED
+}
