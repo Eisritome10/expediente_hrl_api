@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { FindUserByIdFeature } from './find-user-by-id.feature';
+import { UserInUseByProtocolReviewException } from '../exceptions/user-in-use-by-protocol-review.exception';
 
 @Injectable()
 export class DeleteUserFeature {
@@ -11,6 +13,14 @@ export class DeleteUserFeature {
 
   async execute(id: string): Promise<void> {
     await this.findUserByIdFeature.execute(id);
-    await this.prisma.user.delete({ where: { id } });
+
+    try {
+      await this.prisma.user.delete({ where: { id } });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') {
+        throw new UserInUseByProtocolReviewException();
+      }
+      throw e;
+    }
   }
 }

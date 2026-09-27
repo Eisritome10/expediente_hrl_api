@@ -1,5 +1,4 @@
 import { applyProtocoloRules, ProtocoloRulesInput } from '../protocolo.rules';
-import { ProtocoloConvenioSinNombreException } from '../exceptions/protocolo-convenio-sin-nombre.exception';
 import { ProtocoloRevisionHcIncompletaException } from '../exceptions/protocolo-revision-hc-incompleta.exception';
 import { ProtocoloInvestigadorDuplicadoException } from '../exceptions/protocolo-investigador-duplicado.exception';
 import { ProtocoloLugarEjecucionInconsistenteException } from '../exceptions/protocolo-lugar-ejecucion-inconsistente.exception';
@@ -7,8 +6,7 @@ import { ProtocoloMemosNoAplicablesException } from '../exceptions/protocolo-mem
 
 describe('applyProtocoloRules', () => {
   const baseInput: ProtocoloRulesInput = {
-    esConvenio: false,
-    nombreConvenio: null,
+    convenioId: null,
     esEnmienda: false,
     pagoRevision: 150,
     requiereRevisionHc: false,
@@ -29,22 +27,14 @@ describe('applyProtocoloRules', () => {
     expect(result.pagoRevision).toBe(150);
   });
 
-  it('throws ProtocoloConvenioSinNombreException when esConvenio is true without nombreConvenio', () => {
-    expect(() => applyProtocoloRules({ ...baseInput, esConvenio: true, nombreConvenio: null })).toThrow(
-      ProtocoloConvenioSinNombreException,
-    );
-  });
-
-  it('forces pagoRevision to 0 when esConvenio is true', () => {
+  it('forces pagoRevision to 0 when convenioId is set', () => {
     const result = applyProtocoloRules({
       ...baseInput,
-      esConvenio: true,
-      nombreConvenio: 'Universidad X',
+      convenioId: 'agreement-1',
       pagoRevision: 150,
     });
 
     expect(result.pagoRevision).toBe(0);
-    expect(result.nombreConvenio).toBe('Universidad X');
   });
 
   it('forces pagoRevision to 0 when esEnmienda is true', () => {
@@ -53,10 +43,10 @@ describe('applyProtocoloRules', () => {
     expect(result.pagoRevision).toBe(0);
   });
 
-  it('clears nombreConvenio when esConvenio is false', () => {
-    const result = applyProtocoloRules({ ...baseInput, esConvenio: false, nombreConvenio: 'Should be ignored' });
+  it('keeps pagoRevision when convenioId is null', () => {
+    const result = applyProtocoloRules({ ...baseInput, convenioId: null, pagoRevision: 150 });
 
-    expect(result.nombreConvenio).toBeNull();
+    expect(result.pagoRevision).toBe(150);
   });
 
   it('throws ProtocoloRevisionHcIncompletaException when requiereRevisionHc is true and a field is missing', () => {
@@ -148,6 +138,17 @@ describe('applyProtocoloRules', () => {
         asesorIds: ['researcher-3'],
       }),
     ).not.toThrow();
+  });
+
+  it('throws ProtocoloInvestigadorDuplicadoException when a coinvestigador is also an asesor', () => {
+    expect(() =>
+      applyProtocoloRules({
+        ...baseInput,
+        investigadorPrincipalId: 'researcher-1',
+        coinvestigadorIds: ['researcher-2'],
+        asesorIds: ['researcher-2'],
+      }),
+    ).toThrow(ProtocoloInvestigadorDuplicadoException);
   });
 
   it.each(['HOSPITAL REGIONAL DE LORETO', 'hospital regional', 'Hospital-Regional', 'hospitalRegional', 'Hospital_Regional'])(

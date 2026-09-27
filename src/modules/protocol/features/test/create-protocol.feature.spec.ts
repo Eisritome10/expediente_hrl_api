@@ -4,7 +4,7 @@ import { CreateProtocolFeature, CreateProtocolInput } from '../create-protocol.f
 import { ProtocolInvalidReferenceException } from '../../exceptions/protocol-invalid-reference.exception';
 import { ProtocolInvalidResearchLineException } from '../../exceptions/protocol-invalid-research-line.exception';
 import { ProtocolNroExpedienteAlreadyExistsException } from '../../exceptions/protocol-nro-expediente-already-exists.exception';
-import { ProtocoloConvenioSinNombreException } from '../../exceptions/protocolo-convenio-sin-nombre.exception';
+import { ProtocoloInvestigadorDuplicadoException } from '../../exceptions/protocolo-investigador-duplicado.exception';
 import { ProtocoloFacultadRequiereUniversidadException } from '../../exceptions/protocolo-facultad-requiere-universidad.exception';
 import { ProtocoloMemosNoAplicablesException } from '../../exceptions/protocolo-memos-no-aplicables.exception';
 import { ProtocoloLugarEjecucionInconsistenteException } from '../../exceptions/protocolo-lugar-ejecucion-inconsistente.exception';
@@ -14,6 +14,7 @@ describe('CreateProtocolFeature', () => {
     researcher: { findUnique: jest.fn(), count: jest.fn() },
     institution: { findUnique: jest.fn() },
     faculty: { findUnique: jest.fn() },
+    agreement: { findUnique: jest.fn() },
     researchLine: { findUnique: jest.fn() },
     modality: { findUnique: jest.fn() },
     destination: { count: jest.fn() },
@@ -45,8 +46,7 @@ describe('CreateProtocolFeature', () => {
     comprobanteRevision: null,
     pagoRevision: 150,
     esEnmienda: false,
-    esConvenio: false,
-    nombreConvenio: null,
+    convenioId: null,
     requiereRevisionHc: false,
     montoHc: null,
     tipoComprobanteHc: null,
@@ -97,9 +97,9 @@ describe('CreateProtocolFeature', () => {
   });
 
   it('applies protocolo rules before validating references', async () => {
-    await expect(feature.execute({ ...input, esConvenio: true, nombreConvenio: null })).rejects.toBeInstanceOf(
-      ProtocoloConvenioSinNombreException,
-    );
+    await expect(
+      feature.execute({ ...input, investigadorPrincipalId: 'r1', coinvestigadorIds: ['r1'] }),
+    ).rejects.toBeInstanceOf(ProtocoloInvestigadorDuplicadoException);
     expect(prisma.researcher.findUnique).not.toHaveBeenCalled();
   });
 
@@ -171,14 +171,38 @@ describe('CreateProtocolFeature', () => {
     await expect(feature.execute(input)).rejects.toBeInstanceOf(ProtocolNroExpedienteAlreadyExistsException);
   });
 
-  it('forces pagoRevision to 0 when esConvenio is true', async () => {
+  it('throws ProtocolInvalidReferenceException when convenioId does not resolve', async () => {
+    mockValidReferences();
+    (prisma.agreement.findUnique as jest.Mock).mockResolvedValue(null);
+
+    await expect(feature.execute({ ...input, convenioId: 'a1' })).rejects.toBeInstanceOf(
+      ProtocolInvalidReferenceException,
+    );
+  });
+
+  it('connects the agreement and forces pagoRevision to 0 when convenioId resolves', async () => {
+    mockValidReferences();
+    (prisma.agreement.findUnique as jest.Mock).mockResolvedValue({ id: 'a1' });
+    (prisma.protocol.create as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute({ ...input, convenioId: 'a1', pagoRevision: 150 });
+
+    expect(prisma.protocol.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ convenio: { connect: { id: 'a1' } }, pagoRevision: 0 }),
+      }),
+    );
+  });
+
+  it('does not look up an agreement or connect it when convenioId is null', async () => {
     mockValidReferences();
     (prisma.protocol.create as jest.Mock).mockResolvedValue({ id: 'p1' });
 
-    await feature.execute({ ...input, esConvenio: true, nombreConvenio: 'Universidad X', pagoRevision: 150 });
+    await feature.execute({ ...input, convenioId: null });
 
+    expect(prisma.agreement.findUnique).not.toHaveBeenCalled();
     expect(prisma.protocol.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ pagoRevision: 0 }) }),
+      expect.objectContaining({ data: expect.objectContaining({ convenio: undefined }) }),
     );
   });
 

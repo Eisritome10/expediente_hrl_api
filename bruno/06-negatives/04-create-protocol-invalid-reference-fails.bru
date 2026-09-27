@@ -1,0 +1,33 @@
+meta {
+  name: 04-create-protocol-invalid-reference-fails
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/protocols
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "nroExpediente": "BRUNO-INVALID-{{runId}}",
+    "fechaRecepcion": "2026-01-15",
+    "titulo": "Protocolo con referencia invalida",
+    "lugarEjecucion": "Clinica Cualquiera",
+    "esInstitucional": false,
+    "investigadorPrincipalId": "{{investigadorPrincipalId}}",
+    "lineaHrlId": "{{lineaHrlId}}",
+    "lineaMeta2030Id": "{{lineaMeta2030Id}}",
+    "modalidadId": "00000000-0000-0000-0000-000000000000",
+    "propositoRevision": "Revision inicial",
+    "requiereRevisionHc": false,
+    "certificadoBuenasPracticas": false
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.errorCode: eq PROTOCOL_INVALID_REFERENCE
+}

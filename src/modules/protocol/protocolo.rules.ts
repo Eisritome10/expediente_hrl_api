@@ -1,4 +1,3 @@
-import { ProtocoloConvenioSinNombreException } from './exceptions/protocolo-convenio-sin-nombre.exception';
 import { ProtocoloRevisionHcIncompletaException } from './exceptions/protocolo-revision-hc-incompleta.exception';
 import { ProtocoloInvestigadorDuplicadoException } from './exceptions/protocolo-investigador-duplicado.exception';
 import { ProtocoloLugarEjecucionInconsistenteException } from './exceptions/protocolo-lugar-ejecucion-inconsistente.exception';
@@ -9,8 +8,7 @@ function normalizeAlnum(value: string): string {
 }
 
 export type ProtocoloRulesInput = {
-  esConvenio: boolean;
-  nombreConvenio: string | null;
+  convenioId: string | null;
   esEnmienda: boolean;
   pagoRevision: number | null;
   requiereRevisionHc: boolean;
@@ -27,7 +25,6 @@ export type ProtocoloRulesInput = {
 
 export type ProtocoloRulesResult = {
   pagoRevision: number | null;
-  nombreConvenio: string | null;
   montoHc: number | null;
   tipoComprobanteHc: string | null;
   nroComprobanteHc: string | null;
@@ -35,11 +32,9 @@ export type ProtocoloRulesResult = {
 };
 
 export function applyProtocoloRules(input: ProtocoloRulesInput): ProtocoloRulesResult {
-  if (input.esConvenio && !input.nombreConvenio) {
-    throw new ProtocoloConvenioSinNombreException();
-  }
-
-  const pagoRevision = input.esConvenio || input.esEnmienda ? 0 : input.pagoRevision;
+  // Un protocolo es de convenio si referencia un Agreement; en ese caso no paga revisión.
+  const esConvenio = input.convenioId !== null;
+  const pagoRevision = esConvenio || input.esEnmienda ? 0 : input.pagoRevision;
 
   if (input.requiereRevisionHc) {
     if (!input.montoHc || !input.tipoComprobanteHc || !input.nroComprobanteHc) {
@@ -49,7 +44,8 @@ export function applyProtocoloRules(input: ProtocoloRulesInput): ProtocoloRulesR
 
   if (
     input.coinvestigadorIds.includes(input.investigadorPrincipalId) ||
-    input.asesorIds.includes(input.investigadorPrincipalId)
+    input.asesorIds.includes(input.investigadorPrincipalId) ||
+    input.coinvestigadorIds.some((id) => input.asesorIds.includes(id))
   ) {
     throw new ProtocoloInvestigadorDuplicadoException();
   }
@@ -64,7 +60,6 @@ export function applyProtocoloRules(input: ProtocoloRulesInput): ProtocoloRulesR
 
   return {
     pagoRevision,
-    nombreConvenio: input.esConvenio ? input.nombreConvenio : null,
     montoHc: input.requiereRevisionHc ? input.montoHc : null,
     tipoComprobanteHc: input.requiereRevisionHc ? input.tipoComprobanteHc : null,
     nroComprobanteHc: input.requiereRevisionHc ? input.nroComprobanteHc : null,

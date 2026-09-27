@@ -1,4 +1,4 @@
-import { Researcher } from '@prisma/client';
+import { ProtocolStatus, Researcher } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProtocolWithRelations } from '../../protocol.include';
 
@@ -57,6 +57,8 @@ class ProtocolRelatedModalityResponseDto {
 
 export class ProtocolResponseDto {
   @ApiProperty() readonly id: string;
+  @ApiProperty({ enum: ProtocolStatus, description: 'Estado del protocolo: CREATED (creado), OBSERVED (observado), CORRECTED (corregido), FINALIZED (finalizado)' })
+  readonly status: ProtocolStatus;
   @ApiProperty() readonly nroExpediente: string;
   @ApiProperty() readonly fechaRecepcion: Date;
   @ApiProperty() readonly titulo: string;
@@ -101,7 +103,8 @@ export class ProtocolResponseDto {
 
   @ApiProperty() readonly esEnmienda: boolean;
   @ApiProperty() readonly esConvenio: boolean;
-  @ApiPropertyOptional({ nullable: true }) readonly nombreConvenio: string | null;
+  @ApiPropertyOptional({ type: ProtocolRelatedEntityResponseDto, nullable: true })
+  readonly convenio: ProtocolRelatedEntityResponseDto | null;
 
   @ApiProperty() readonly requiereRevisionHc: boolean;
   @ApiPropertyOptional({ nullable: true }) readonly montoHc: number | null;
@@ -115,6 +118,7 @@ export class ProtocolResponseDto {
 
   private constructor(
     id: string,
+    status: ProtocolStatus,
     nroExpediente: string,
     fechaRecepcion: Date,
     titulo: string,
@@ -137,7 +141,7 @@ export class ProtocolResponseDto {
     pagoRevision: number | null,
     esEnmienda: boolean,
     esConvenio: boolean,
-    nombreConvenio: string | null,
+    convenio: ProtocolRelatedEntityResponseDto | null,
     requiereRevisionHc: boolean,
     montoHc: number | null,
     tipoComprobanteHc: string | null,
@@ -147,6 +151,7 @@ export class ProtocolResponseDto {
     updatedAt: Date,
   ) {
     this.id = id;
+    this.status = status;
     this.nroExpediente = nroExpediente;
     this.fechaRecepcion = fechaRecepcion;
     this.titulo = titulo;
@@ -169,7 +174,7 @@ export class ProtocolResponseDto {
     this.pagoRevision = pagoRevision;
     this.esEnmienda = esEnmienda;
     this.esConvenio = esConvenio;
-    this.nombreConvenio = nombreConvenio;
+    this.convenio = convenio;
     this.requiereRevisionHc = requiereRevisionHc;
     this.montoHc = montoHc;
     this.tipoComprobanteHc = tipoComprobanteHc;
@@ -182,6 +187,7 @@ export class ProtocolResponseDto {
   static from(protocol: ProtocolWithRelations): ProtocolResponseDto {
     return new ProtocolResponseDto(
       protocol.id,
+      protocol.status,
       protocol.nroExpediente,
       protocol.fechaRecepcion,
       protocol.titulo,
@@ -203,8 +209,8 @@ export class ProtocolResponseDto {
       protocol.comprobanteRevision,
       protocol.pagoRevision !== null ? Number(protocol.pagoRevision) : null,
       protocol.esEnmienda,
-      protocol.esConvenio,
-      protocol.nombreConvenio,
+      protocol.convenioId !== null,
+      protocol.convenio ? ProtocolRelatedEntityResponseDto.of(protocol.convenio.id, protocol.convenio.name) : null,
       protocol.requiereRevisionHc,
       protocol.montoHc !== null ? Number(protocol.montoHc) : null,
       protocol.tipoComprobanteHc,

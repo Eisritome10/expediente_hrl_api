@@ -1,6 +1,7 @@
-import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
@@ -15,7 +16,9 @@ import { PaginatedResultResponseDto } from '../../common/dtos/response/paginated
 import { CreateProtocolFeature } from './features/create-protocol.feature';
 import { ListProtocolsFeature } from './features/list-protocols.feature';
 import { FindProtocolByIdFeature } from './features/find-protocol-by-id.feature';
+import { UpdateProtocolFeature, UpdateProtocolInput } from './features/update-protocol.feature';
 import { CreateProtocolRequestDto } from './dtos/request/create-protocol.request.dto';
+import { UpdateProtocolRequestDto } from './dtos/request/update-protocol.request.dto';
 import { ListProtocolsQueryDto } from './dtos/request/list-protocols.query.dto';
 import { ProtocolResponseDto } from './dtos/response/protocol.response.dto';
 
@@ -28,6 +31,7 @@ export class ProtocolController {
     private readonly createProtocolFeature: CreateProtocolFeature,
     private readonly listProtocolsFeature: ListProtocolsFeature,
     private readonly findProtocolByIdFeature: FindProtocolByIdFeature,
+    private readonly updateProtocolFeature: UpdateProtocolFeature,
   ) {}
 
   @Post()
@@ -56,8 +60,7 @@ export class ProtocolController {
       comprobanteRevision: dto.comprobanteRevision ?? null,
       pagoRevision: dto.pagoRevision ?? null,
       esEnmienda: dto.esEnmienda ?? false,
-      esConvenio: dto.esConvenio ?? false,
-      nombreConvenio: dto.nombreConvenio ?? null,
+      convenioId: dto.convenioId ?? null,
       requiereRevisionHc: dto.requiereRevisionHc ?? false,
       montoHc: dto.montoHc ?? null,
       tipoComprobanteHc: dto.tipoComprobanteHc ?? null,
@@ -77,6 +80,7 @@ export class ProtocolController {
       investigadorPrincipalId: query.investigadorPrincipalId,
       fechaRecepcionDesde: query.fechaRecepcionDesde ? new Date(query.fechaRecepcionDesde) : undefined,
       fechaRecepcionHasta: query.fechaRecepcionHasta ? new Date(query.fechaRecepcionHasta) : undefined,
+      status: query.status,
     });
 
     return PaginatedResultResponseDto.from(data.map(ProtocolResponseDto.from), page, limit, total);
@@ -91,5 +95,53 @@ export class ProtocolController {
     const protocol = await this.findProtocolByIdFeature.execute(id);
 
     return ProtocolResponseDto.from(protocol);
+  }
+
+  @Patch(':id')
+  @ApiOperation({
+    summary: 'Corregir un protocolo observado',
+    description:
+      'Solo permitido si el protocolo está OBSERVADO. Los campos omitidos se conservan; null en un campo opcional lo limpia; un array reemplaza la relación completa. Al guardar, el estado pasa a CORREGIDO.',
+  })
+  @ApiParam({ name: 'id', description: 'Id del protocolo' })
+  @ApiOkResponse({ type: ProtocolResponseDto })
+  @ApiNotFoundResponse({ description: 'El protocolo no existe' })
+  @ApiConflictResponse({ description: 'El protocolo no está en estado OBSERVADO o el número de expediente ya existe' })
+  async update(@Param('id') id: string, @Body() dto: UpdateProtocolRequestDto): Promise<ProtocolResponseDto> {
+    const protocol = await this.updateProtocolFeature.execute(id, this.toUpdateInput(dto));
+
+    return ProtocolResponseDto.from(protocol);
+  }
+
+  private toUpdateInput(dto: UpdateProtocolRequestDto): UpdateProtocolInput {
+    return {
+      nroExpediente: dto.nroExpediente,
+      fechaRecepcion: dto.fechaRecepcion !== undefined ? new Date(dto.fechaRecepcion) : undefined,
+      titulo: dto.titulo,
+      lugarEjecucion: dto.lugarEjecucion,
+      esInstitucional: dto.esInstitucional,
+      investigadorPrincipalId: dto.investigadorPrincipalId,
+      coinvestigadorIds: dto.coinvestigadorIds,
+      asesorIds: dto.asesorIds,
+      institucionId: dto.institucionId,
+      facultadId: dto.facultadId,
+      convenioId: dto.convenioId,
+      destinoIds: dto.destinoIds,
+      studyDesignIds: dto.studyDesignIds,
+      lineaHrlId: dto.lineaHrlId,
+      lineaMeta2030Id: dto.lineaMeta2030Id,
+      modalidadId: dto.modalidadId,
+      propositoRevision: dto.propositoRevision,
+      fechaRevision: dto.fechaRevision !== undefined ? (dto.fechaRevision ? new Date(dto.fechaRevision) : null) : undefined,
+      tipoComprobante: dto.tipoComprobante,
+      comprobanteRevision: dto.comprobanteRevision,
+      pagoRevision: dto.pagoRevision,
+      esEnmienda: dto.esEnmienda,
+      requiereRevisionHc: dto.requiereRevisionHc,
+      montoHc: dto.montoHc,
+      tipoComprobanteHc: dto.tipoComprobanteHc,
+      nroComprobanteHc: dto.nroComprobanteHc,
+      certificadoBuenasPracticas: dto.certificadoBuenasPracticas,
+    };
   }
 }

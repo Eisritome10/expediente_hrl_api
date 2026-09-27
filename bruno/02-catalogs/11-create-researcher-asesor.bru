@@ -1,0 +1,28 @@
+meta {
+  name: 11-create-researcher-asesor
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/researchers
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "dni": "{{dniAsesor}}",
+    "firstName": "Pedro",
+    "lastName": "Asesor Bruno",
+    "email": "asesor.bruno.{{runId}}@example.com"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) bru.setVar("asesorId", res.body.id);
+}
+
+assert {
+  res.status: eq 201
+}

@@ -1,3 +1,4 @@
+import { ProtocolStatus } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { ListProtocolsFeature } from '../list-protocols.feature';
 
@@ -51,6 +52,28 @@ describe('ListProtocolsFeature', () => {
           fechaRecepcion: { gte: desde, lte: hasta },
         },
       }),
+    );
+  });
+
+  it('filters by status when provided', async () => {
+    (prisma.protocol.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.protocol.count as jest.Mock).mockResolvedValue(0);
+
+    await feature.execute(1, 10, { status: ProtocolStatus.OBSERVED });
+
+    expect(prisma.protocol.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ status: ProtocolStatus.OBSERVED }) }),
+    );
+  });
+
+  it('leaves status out of the where clause when not provided', async () => {
+    (prisma.protocol.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.protocol.count as jest.Mock).mockResolvedValue(0);
+
+    await feature.execute(1, 10, {});
+
+    expect(prisma.protocol.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.not.objectContaining({ status: expect.anything() }) }),
     );
   });
 });

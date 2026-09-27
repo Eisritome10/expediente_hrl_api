@@ -69,6 +69,11 @@ export class CreateProtocolRequestDto {
   @IsUUID()
   facultadId?: string;
 
+  @ApiPropertyOptional({ description: 'Id del convenio (si se informa, el pago de revisión es 0)' })
+  @IsOptional()
+  @IsUUID()
+  convenioId?: string;
+
   @ApiPropertyOptional({ description: 'Ids de destinos (memo)', type: [String], default: [] })
   @IsOptional()
   @IsArray()
@@ -128,17 +133,6 @@ export class CreateProtocolRequestDto {
   @IsOptional()
   @IsBoolean()
   esEnmienda?: boolean;
-
-  @ApiPropertyOptional({ description: '¿Es convenio?', default: false })
-  @IsOptional()
-  @IsBoolean()
-  esConvenio?: boolean;
-
-  @ApiPropertyOptional({ description: 'Nombre de la institución del convenio (requerido si esConvenio es true)' })
-  @IsOptional()
-  @IsString()
-  @UpperCase()
-  nombreConvenio?: string;
 
   @ApiPropertyOptional({ description: '¿Requiere revisión de historia clínica?', default: false })
   @IsOptional()

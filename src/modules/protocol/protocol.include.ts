@@ -4,6 +4,7 @@ export const PROTOCOL_INCLUDE = {
   investigadorPrincipal: true,
   institucion: true,
   facultad: true,
+  convenio: true,
   lineaHrl: true,
   lineaMeta2030: true,
   modalidad: true,

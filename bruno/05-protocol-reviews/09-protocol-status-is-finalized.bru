@@ -1,0 +1,15 @@
+meta {
+  name: 09-protocol-status-is-finalized
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/protocols/{{protocolId}}
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq FINALIZED
+}
