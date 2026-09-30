@@ -1,6 +1,9 @@
-import { IsEnum, IsOptional, IsString, Length, MinLength } from 'class-validator';
+import { IsEnum, IsIn, IsOptional, IsString, Length, MinLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserRole, UserStatus } from '@prisma/client';
+
+// RESEARCHER solo se asigna automáticamente al crear un investigador.
+export const ASSIGNABLE_USER_ROLES = Object.values(UserRole).filter((role) => role !== UserRole.RESEARCHER);
 
 export class CreateUserRequestDto {
   @ApiProperty({ description: 'Nombre de usuario', example: 'jperez' })
@@ -18,9 +21,9 @@ export class CreateUserRequestDto {
   @MinLength(8)
   password: string;
 
-  @ApiPropertyOptional({ description: 'Rol del usuario', enum: UserRole })
+  @ApiPropertyOptional({ description: 'Rol del usuario', enum: ASSIGNABLE_USER_ROLES })
   @IsOptional()
-  @IsEnum(UserRole)
+  @IsIn(ASSIGNABLE_USER_ROLES)
   role?: UserRole;
 
   @ApiPropertyOptional({ description: 'Estado del usuario', enum: UserStatus })

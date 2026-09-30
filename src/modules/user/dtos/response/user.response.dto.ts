@@ -5,6 +5,8 @@ export class UserResponseDto {
   @ApiProperty() readonly id: string;
   @ApiProperty() readonly username: string;
   @ApiProperty() readonly fullName: string;
+  @ApiProperty({ nullable: true, type: String }) readonly email: string | null;
+  @ApiProperty({ nullable: true, type: String }) readonly researcherId: string | null;
   @ApiProperty({ enum: UserRole }) readonly role: UserRole;
   @ApiProperty({ enum: UserStatus }) readonly status: UserStatus;
   @ApiProperty() readonly createdAt: Date;
@@ -14,6 +16,8 @@ export class UserResponseDto {
     id: string,
     username: string,
     fullName: string,
+    email: string | null,
+    researcherId: string | null,
     role: UserRole,
     status: UserStatus,
     createdAt: Date,
@@ -22,6 +26,8 @@ export class UserResponseDto {
     this.id = id;
     this.username = username;
     this.fullName = fullName;
+    this.email = email;
+    this.researcherId = researcherId;
     this.role = role;
     this.status = status;
     this.createdAt = createdAt;
@@ -33,6 +39,8 @@ export class UserResponseDto {
       user.id,
       user.username,
       user.fullName,
+      user.email,
+      user.researcherId,
       user.role,
       user.status,
       user.createdAt,

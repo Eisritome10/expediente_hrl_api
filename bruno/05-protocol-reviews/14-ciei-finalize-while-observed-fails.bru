@@ -1,0 +1,28 @@
+meta {
+  name: 14-ciei-finalize-while-observed-fails
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/protocols/{{protocolId}}/reviews
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "committee": "CIEI",
+    "outcome": "FINALIZED",
+    "tieneConstanciaEtica": true,
+    "idConstanciaEtica": "CE-2026-001",
+    "fechaConstancia": "2026-01-20",
+    "catalogadoRiesgo": "MINIMAL_RISK",
+    "consentimientoInformado": true
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.errorCode: eq PROTOCOL_REVIEW_OBSERVATION_PENDING
+}

@@ -4,6 +4,11 @@ import * as argon2 from 'argon2';
 import { UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 
+const ADMIN_USERNAME = 'ADMIN';
+const ADMIN_EMAIL = 'admin@admin.com';
+const LEGACY_ADMIN_USERNAME = 'admin';
+const DEFAULT_ADMIN_PASSWORD = 'ADMIN';
+
 @Injectable()
 export class SeederService implements OnModuleInit {
   private readonly logger = new Logger(SeederService.name);
@@ -18,21 +23,29 @@ export class SeederService implements OnModuleInit {
   }
 
   private async seedAdminUser(): Promise<void> {
-    const username = 'admin';
-    const existing = await this.prisma.user.findUnique({ where: { username } });
+    const existing = await this.prisma.user.findFirst({
+      where: { OR: [{ username: ADMIN_USERNAME }, { email: ADMIN_EMAIL }] },
+    });
     if (existing) return;
 
-    const password = this.configService.get<string>('SEED_ADMIN_PASSWORD');
-    if (!password) {
-      this.logger.warn('SEED_ADMIN_PASSWORD is not set — skipping initial admin user seed');
+    // Bases anteriores: el admin se creaba como 'admin'; se renombra conservando su contraseña.
+    const legacy = await this.prisma.user.findUnique({ where: { username: LEGACY_ADMIN_USERNAME } });
+    if (legacy) {
+      await this.prisma.user.update({
+        where: { id: legacy.id },
+        data: { username: ADMIN_USERNAME, email: ADMIN_EMAIL },
+      });
+      this.logger.log(`Renamed legacy admin user to ${ADMIN_USERNAME}`);
       return;
     }
 
+    const password = this.configService.get<string>('SEED_ADMIN_PASSWORD') ?? DEFAULT_ADMIN_PASSWORD;
     const passwordHash = await argon2.hash(password);
 
     await this.prisma.user.create({
       data: {
-        username,
+        username: ADMIN_USERNAME,
+        email: ADMIN_EMAIL,
         fullName: 'Administrador',
         passwordHash,
         role: UserRole.ADMIN,
@@ -40,6 +53,6 @@ export class SeederService implements OnModuleInit {
       },
     });
 
-    this.logger.log(`Seeded initial admin user (username: ${username})`);
+    this.logger.log(`Seeded initial admin user (username: ${ADMIN_USERNAME})`);
   }
 }

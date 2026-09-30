@@ -17,8 +17,14 @@ export class LoginFeature {
     private readonly configService: ConfigService,
   ) {}
 
-  async execute(username: string, password: string): Promise<AuthenticatedSession> {
-    const user = await this.prisma.user.findUnique({ where: { username } });
+  async execute(identifier: string, password: string): Promise<AuthenticatedSession> {
+    const value = identifier.trim();
+
+    // El identifier puede ser el username (DNI para investigadores) o el correo electrónico:
+    // una sola consulta cubre ambos casos.
+    const user = await this.prisma.user.findFirst({
+      where: { OR: [{ username: value }, { email: value.toLowerCase() }] },
+    });
     if (!user) throw new InvalidCredentialsException();
 
     if (user.status !== UserStatus.ACTIVE) throw new UserInactiveException();

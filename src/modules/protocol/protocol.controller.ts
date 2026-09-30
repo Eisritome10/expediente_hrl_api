@@ -3,6 +3,7 @@ import {
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
+  ApiForbiddenResponse,
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
@@ -11,16 +12,21 @@ import {
 } from '@nestjs/swagger';
 import { UserRole } from '@prisma/client';
 import { UseAuth } from '../auth/decorators/use-auth.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import type { AuthCurrentUser } from '../../common/interfaces/auth-current-user.interface';
+import { PaginateQueryDto } from '../../common/dtos/request/paginate-query.request.dto';
 import { ApiPaginatedResponse } from '../../common/swagger/api-paginated-response.decorator';
 import { PaginatedResultResponseDto } from '../../common/dtos/response/paginated-result.response.dto';
 import { CreateProtocolFeature } from './features/create-protocol.feature';
 import { ListProtocolsFeature } from './features/list-protocols.feature';
+import { ListResearcherProtocolsFeature } from './features/list-researcher-protocols.feature';
 import { FindProtocolByIdFeature } from './features/find-protocol-by-id.feature';
 import { UpdateProtocolFeature, UpdateProtocolInput } from './features/update-protocol.feature';
 import { CreateProtocolRequestDto } from './dtos/request/create-protocol.request.dto';
 import { UpdateProtocolRequestDto } from './dtos/request/update-protocol.request.dto';
 import { ListProtocolsQueryDto } from './dtos/request/list-protocols.query.dto';
 import { ProtocolResponseDto } from './dtos/response/protocol.response.dto';
+import { ProtocolSummaryResponseDto } from './dtos/response/protocol-summary.response.dto';
 
 @ApiTags('protocols')
 @ApiBearerAuth()
@@ -30,6 +36,7 @@ export class ProtocolController {
   constructor(
     private readonly createProtocolFeature: CreateProtocolFeature,
     private readonly listProtocolsFeature: ListProtocolsFeature,
+    private readonly listResearcherProtocolsFeature: ListResearcherProtocolsFeature,
     private readonly findProtocolByIdFeature: FindProtocolByIdFeature,
     private readonly updateProtocolFeature: UpdateProtocolFeature,
   ) {}
@@ -84,6 +91,26 @@ export class ProtocolController {
     });
 
     return PaginatedResultResponseDto.from(data.map(ProtocolResponseDto.from), page, limit, total);
+  }
+
+  // Debe declararse antes que @Get(':id'), o "mine" se interpretaría como un id.
+  // El rol a nivel de método reemplaza al ADMIN de la clase (RolesGuard usa getAllAndOverride).
+  @Get('mine')
+  @UseAuth(UserRole.RESEARCHER)
+  @ApiOperation({ summary: 'Listar mis protocolos (investigador)' })
+  @ApiPaginatedResponse(ProtocolSummaryResponseDto)
+  @ApiForbiddenResponse({ description: 'Solo disponible para el rol investigador con una cuenta vinculada' })
+  async listMine(
+    @CurrentUser() currentUser: AuthCurrentUser,
+    @Query() query: PaginateQueryDto,
+  ): Promise<PaginatedResultResponseDto<ProtocolSummaryResponseDto>> {
+    const { data, page, limit, total } = await this.listResearcherProtocolsFeature.execute(
+      currentUser.id,
+      query.page,
+      query.limit,
+    );
+
+    return PaginatedResultResponseDto.from(data.map(ProtocolSummaryResponseDto.from), page, limit, total);
   }
 
   @Get(':id')

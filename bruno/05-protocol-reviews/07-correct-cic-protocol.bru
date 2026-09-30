@@ -1,7 +1,7 @@
 meta {
-  name: 06-correct-protocol
+  name: 07-correct-cic-protocol
   type: http
-  seq: 6
+  seq: 7
 }
 
 patch {
@@ -18,7 +18,7 @@ body:json {
 
 assert {
   res.status: eq 200
-  res.body.status: eq CORRECTED
+  res.body.status: eq CIC_CORRECTED
   res.body.titulo: eq ESTUDIO DE PRUEBA BRUNO CORREGIDO
   res.body.lugarEjecucion: eq HOSPITAL REGIONAL DE LORETO
 }

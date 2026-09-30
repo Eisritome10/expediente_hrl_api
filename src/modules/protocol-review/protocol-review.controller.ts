@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Param, Post, Query } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -36,7 +37,13 @@ export class ProtocolReviewController {
   @ApiParam({ name: 'protocolId', description: 'Id del protocolo' })
   @ApiCreatedResponse({ type: ProtocolReviewResponseDto })
   @ApiNotFoundResponse({ description: 'El protocolo no existe' })
-  @ApiConflictResponse({ description: 'El protocolo ya está finalizado' })
+  @ApiBadRequestResponse({
+    description: 'Outcome invalido para el comite, campos de etica no permitidos en CIC, o constancia/finalizacion incompleta',
+  })
+  @ApiConflictResponse({
+    description:
+      'El protocolo ya esta finalizado, el comite CIC esta cerrado, falta la aprobacion del CIC, hay una observacion CIEI pendiente de corregir, o el protocolo cambio de estado en paralelo',
+  })
   @ApiForbiddenResponse({ description: 'El revisor no existe o no está activo' })
   async create(
     @Param('protocolId') protocolId: string,
@@ -46,8 +53,15 @@ export class ProtocolReviewController {
     const review = await this.createProtocolReviewFeature.execute({
       protocolId,
       reviewerId: user.id,
-      status: dto.status,
+      committee: dto.committee,
+      outcome: dto.outcome,
       observations: dto.observations ?? null,
+      tieneConstanciaEtica: dto.tieneConstanciaEtica,
+      idConstanciaEtica: dto.idConstanciaEtica,
+      fechaConstancia: dto.fechaConstancia ? new Date(dto.fechaConstancia) : undefined,
+      catalogadoRiesgo: dto.catalogadoRiesgo,
+      consentimientoInformado: dto.consentimientoInformado,
+      departamentoDirigidoPermiso: dto.departamentoDirigidoPermiso,
     });
 
     return ProtocolReviewResponseDto.from(review);

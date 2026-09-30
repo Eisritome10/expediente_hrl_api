@@ -1,5 +1,5 @@
 meta {
-  name: 04-protocol-status-is-observed
+  name: 04-protocol-status-is-cic-observed
   type: http
   seq: 4
 }
@@ -11,5 +11,5 @@ get {
 
 assert {
   res.status: eq 200
-  res.body.status: eq OBSERVED
+  res.body.status: eq CIC_OBSERVED
 }

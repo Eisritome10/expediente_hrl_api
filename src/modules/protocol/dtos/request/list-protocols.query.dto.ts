@@ -24,7 +24,10 @@ export class ListProtocolsQueryDto extends PaginateQueryDto {
   @IsDateString()
   fechaRecepcionHasta?: string;
 
-  @ApiPropertyOptional({ enum: ProtocolStatus, description: 'Filtrar por estado del protocolo' })
+  @ApiPropertyOptional({
+    enum: ProtocolStatus,
+    description: 'Filtrar por estado del protocolo: CREATED, CIC_OBSERVED, CIC_CORRECTED, CIEI_OBSERVED, CIEI_CORRECTED, FINALIZED',
+  })
   @IsOptional()
   @IsEnum(ProtocolStatus)
   status?: ProtocolStatus;

@@ -1,7 +1,7 @@
 meta {
-  name: 09-protocol-status-is-finalized
+  name: 10-protocol-status-unchanged-after-cic-approval
   type: http
-  seq: 9
+  seq: 10
 }
 
 get {
@@ -11,5 +11,5 @@ get {
 
 assert {
   res.status: eq 200
-  res.body.status: eq FINALIZED
+  res.body.status: eq CIC_CORRECTED
 }

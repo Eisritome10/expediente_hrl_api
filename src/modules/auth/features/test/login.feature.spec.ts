@@ -10,7 +10,7 @@ import { UserInactiveException } from '../../exceptions/user-inactive.exception'
 jest.mock('argon2');
 
 describe('LoginFeature', () => {
-  const prisma = { user: { findUnique: jest.fn() } } as unknown as PrismaService;
+  const prisma = { user: { findFirst: jest.fn() } } as unknown as PrismaService;
   const jwtService = { signAsync: jest.fn() } as unknown as JwtService;
   const configService = { getOrThrow: jest.fn((key: string) => key) } as unknown as ConfigService;
   const feature = new LoginFeature(prisma, jwtService, configService);
@@ -30,39 +30,46 @@ describe('LoginFeature', () => {
     jest.clearAllMocks();
   });
 
-  it('logs in and returns access + refresh tokens', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(user);
+  const findFirst = prisma.user.findFirst as jest.Mock;
+
+  it('logs in and returns access + refresh tokens using a single lookup by username or email', async () => {
+    findFirst.mockResolvedValue(user);
     (argon2.verify as jest.Mock).mockResolvedValue(true);
     (jwtService.signAsync as jest.Mock)
       .mockResolvedValueOnce('access-token')
       .mockResolvedValueOnce('refresh-token');
 
-    const result = await feature.execute('admin', 'password');
+    const result = await feature.execute('Ada@Example.com', 'password');
 
     expect(result).toEqual({
       accessToken: 'access-token',
       refreshToken: 'refresh-token',
       user: { id: 'u1', username: 'admin', role: UserRole.ADMIN },
     });
+    expect(findFirst).toHaveBeenCalledTimes(1);
+    expect(findFirst).toHaveBeenCalledWith({
+      where: { OR: [{ username: 'Ada@Example.com' }, { email: 'ada@example.com' }] },
+    });
     expect(argon2.verify).toHaveBeenCalledWith('hashed', 'password');
   });
 
-  it('throws InvalidCredentialsException when the user does not exist', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(null);
+  it('throws InvalidCredentialsException when no user matches the identifier', async () => {
+    findFirst.mockResolvedValue(null);
 
     await expect(feature.execute('missing', 'password')).rejects.toBeInstanceOf(
       InvalidCredentialsException,
     );
+    expect(findFirst).toHaveBeenCalledTimes(1);
   });
 
   it('throws UserInactiveException when the user is inactive', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue({ ...user, status: UserStatus.INACTIVE });
+    findFirst.mockResolvedValue({ ...user, status: UserStatus.INACTIVE });
 
     await expect(feature.execute('admin', 'password')).rejects.toBeInstanceOf(UserInactiveException);
   });
 
   it('throws InvalidCredentialsException when the password is wrong', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(user);
+    findFirst.mockResolvedValue(user);
     (argon2.verify as jest.Mock).mockResolvedValue(false);
 
     await expect(feature.execute('admin', 'wrong')).rejects.toBeInstanceOf(InvalidCredentialsException);

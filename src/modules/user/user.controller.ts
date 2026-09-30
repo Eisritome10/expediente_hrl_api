@@ -77,6 +77,7 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'Id del usuario' })
   @ApiOkResponse({ type: UserResponseDto })
   @ApiNotFoundResponse({ description: 'El usuario no existe' })
+  @ApiConflictResponse({ description: 'El usuario pertenece a un investigador; no se puede cambiar su rol' })
   async update(@Param('id') id: string, @Body() dto: UpdateUserRequestDto): Promise<UserResponseDto> {
     const user = await this.updateUserFeature.execute(id, dto);
 
@@ -89,7 +90,7 @@ export class UserController {
   @ApiParam({ name: 'id', description: 'Id del usuario' })
   @ApiNoContentResponse()
   @ApiNotFoundResponse({ description: 'El usuario no existe' })
-  @ApiConflictResponse({ description: 'El usuario está referenciado por una revisión de protocolo' })
+  @ApiConflictResponse({ description: 'El usuario está referenciado por una revisión de protocolo o pertenece a un investigador' })
   async remove(@Param('id') id: string): Promise<void> {
     await this.deleteUserFeature.execute(id);
   }

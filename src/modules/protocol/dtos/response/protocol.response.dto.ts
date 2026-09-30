@@ -1,4 +1,4 @@
-import { ProtocolStatus, Researcher } from '@prisma/client';
+import { ProtocolStatus, Researcher, RiskLevel } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ProtocolWithRelations } from '../../protocol.include';
 
@@ -57,7 +57,7 @@ class ProtocolRelatedModalityResponseDto {
 
 export class ProtocolResponseDto {
   @ApiProperty() readonly id: string;
-  @ApiProperty({ enum: ProtocolStatus, description: 'Estado del protocolo: CREATED (creado), OBSERVED (observado), CORRECTED (corregido), FINALIZED (finalizado)' })
+  @ApiProperty({ enum: ProtocolStatus, description: 'Estado del protocolo: CREATED (creado), CIC_OBSERVED (observado por CIC), CIC_CORRECTED (corregido para CIC), CIEI_OBSERVED (observado por CIEI), CIEI_CORRECTED (corregido para CIEI), FINALIZED (finalizado)' })
   readonly status: ProtocolStatus;
   @ApiProperty() readonly nroExpediente: string;
   @ApiProperty() readonly fechaRecepcion: Date;
@@ -113,6 +113,13 @@ export class ProtocolResponseDto {
 
   @ApiProperty() readonly certificadoBuenasPracticas: boolean;
 
+  @ApiProperty() readonly tieneConstanciaEtica: boolean;
+  @ApiPropertyOptional({ nullable: true }) readonly idConstanciaEtica: string | null;
+  @ApiPropertyOptional({ nullable: true }) readonly fechaConstancia: Date | null;
+  @ApiPropertyOptional({ enum: RiskLevel, nullable: true }) readonly catalogadoRiesgo: RiskLevel | null;
+  @ApiProperty() readonly consentimientoInformado: boolean;
+  @ApiPropertyOptional({ nullable: true }) readonly departamentoDirigidoPermiso: string | null;
+
   @ApiProperty() readonly createdAt: Date;
   @ApiProperty() readonly updatedAt: Date;
 
@@ -147,6 +154,12 @@ export class ProtocolResponseDto {
     tipoComprobanteHc: string | null,
     nroComprobanteHc: string | null,
     certificadoBuenasPracticas: boolean,
+    tieneConstanciaEtica: boolean,
+    idConstanciaEtica: string | null,
+    fechaConstancia: Date | null,
+    catalogadoRiesgo: RiskLevel | null,
+    consentimientoInformado: boolean,
+    departamentoDirigidoPermiso: string | null,
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -180,6 +193,12 @@ export class ProtocolResponseDto {
     this.tipoComprobanteHc = tipoComprobanteHc;
     this.nroComprobanteHc = nroComprobanteHc;
     this.certificadoBuenasPracticas = certificadoBuenasPracticas;
+    this.tieneConstanciaEtica = tieneConstanciaEtica;
+    this.idConstanciaEtica = idConstanciaEtica;
+    this.fechaConstancia = fechaConstancia;
+    this.catalogadoRiesgo = catalogadoRiesgo;
+    this.consentimientoInformado = consentimientoInformado;
+    this.departamentoDirigidoPermiso = departamentoDirigidoPermiso;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -216,6 +235,12 @@ export class ProtocolResponseDto {
       protocol.tipoComprobanteHc,
       protocol.nroComprobanteHc,
       protocol.certificadoBuenasPracticas,
+      protocol.tieneConstanciaEtica,
+      protocol.idConstanciaEtica,
+      protocol.fechaConstancia,
+      protocol.catalogadoRiesgo,
+      protocol.consentimientoInformado,
+      protocol.departamentoDirigidoPermiso,
       protocol.createdAt,
       protocol.updatedAt,
     );

@@ -1,0 +1,17 @@
+meta {
+  name: 18-protocol-status-is-finalized
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/protocols/{{protocolId}}
+  auth: inherit
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq FINALIZED
+  res.body.tieneConstanciaEtica: eq true
+  res.body.catalogadoRiesgo: eq MINIMAL_RISK
+}

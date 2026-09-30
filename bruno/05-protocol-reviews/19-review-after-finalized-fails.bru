@@ -1,7 +1,7 @@
 meta {
-  name: 10-review-after-finalized-fails
+  name: 19-review-after-finalized-fails
   type: http
-  seq: 10
+  seq: 19
 }
 
 post {
@@ -12,8 +12,9 @@ post {
 
 body:json {
   {
-    "status": "OBSERVED",
-    "observations": "No deberia poder revisarse de nuevo"
+    "committee": "CIEI",
+    "outcome": "OBSERVED",
+    "observations": "no deberia poder revisarse de nuevo"
   }
 }
 

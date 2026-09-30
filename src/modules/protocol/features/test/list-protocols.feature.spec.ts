@@ -59,10 +59,10 @@ describe('ListProtocolsFeature', () => {
     (prisma.protocol.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.protocol.count as jest.Mock).mockResolvedValue(0);
 
-    await feature.execute(1, 10, { status: ProtocolStatus.OBSERVED });
+    await feature.execute(1, 10, { status: ProtocolStatus.CIC_OBSERVED });
 
     expect(prisma.protocol.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: expect.objectContaining({ status: ProtocolStatus.OBSERVED }) }),
+      expect.objectContaining({ where: expect.objectContaining({ status: ProtocolStatus.CIC_OBSERVED }) }),
     );
   });
 
