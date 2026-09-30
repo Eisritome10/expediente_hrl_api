@@ -1,0 +1,30 @@
+meta {
+  name: 04-list-my-protocols
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/protocols/mine
+  body: none
+  auth: none
+}
+
+headers {
+  Authorization: Bearer {{researcherToken}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.data: isArray
+  res.body.meta.total: gte 1
+}
+
+tests {
+  test("includes the protocol where the researcher is principal, with its current status", function () {
+    const mine = res.body.data.find((p) => p.id === bru.getVar("protocolId"));
+    expect(mine).to.not.equal(undefined);
+    expect(mine.status).to.equal("FINALIZED");
+    expect(mine).to.not.have.property("coinvestigadores");
+  });
+}

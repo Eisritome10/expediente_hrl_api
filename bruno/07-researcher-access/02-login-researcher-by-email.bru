@@ -1,0 +1,30 @@
+meta {
+  name: 02-login-researcher-by-email
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/auth/login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "identifier": "principal.bruno.{{runId}}@example.com",
+    "password": "{{dniPrincipal}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.accessToken: isString
+  res.body.user.role: eq RESEARCHER
+}
+
+tests {
+  test("username is the researcher DNI", function () {
+    expect(res.body.user.username).to.equal(String(bru.getVar("dniPrincipal")));
+  });
+}

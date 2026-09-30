@@ -22,7 +22,12 @@ export class UpdateProtocolFeature {
   async execute(id: string, patch: UpdateProtocolInput): Promise<ProtocolWithRelations> {
     const current = await this.findProtocolByIdFeature.execute(id);
 
-    if (current.status !== ProtocolStatus.OBSERVED) {
+    let nextStatus: ProtocolStatus;
+    if (current.status === ProtocolStatus.CIC_OBSERVED) {
+      nextStatus = ProtocolStatus.CIC_CORRECTED;
+    } else if (current.status === ProtocolStatus.CIEI_OBSERVED) {
+      nextStatus = ProtocolStatus.CIEI_CORRECTED;
+    } else {
       throw new ProtocolNotObservedException(id);
     }
 
@@ -78,8 +83,8 @@ export class UpdateProtocolFeature {
     try {
       return await this.prisma.$transaction(async (tx) => {
         const { count } = await tx.protocol.updateMany({
-          where: { id, status: ProtocolStatus.OBSERVED },
-          data: { status: ProtocolStatus.CORRECTED },
+          where: { id, status: current.status },
+          data: { status: nextStatus },
         });
 
         if (count === 0) throw new ProtocolNotObservedException(id);

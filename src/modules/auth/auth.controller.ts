@@ -23,7 +23,7 @@ export class AuthController {
   @ApiOkResponse({ type: AuthenticatedSessionResponseDto })
   @ApiUnauthorizedResponse({ description: 'Credenciales inválidas' })
   async login(@Body() dto: LoginRequestDto): Promise<AuthenticatedSession> {
-    return this.loginFeature.execute(dto.username, dto.password);
+    return this.loginFeature.execute(dto.identifier, dto.password);
   }
 
   @Post('refresh')

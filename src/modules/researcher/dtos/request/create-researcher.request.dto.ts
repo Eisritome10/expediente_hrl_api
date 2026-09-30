@@ -1,6 +1,7 @@
 import { IsEmail, IsOptional, IsString, Length, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UpperCase } from '../../../../common/decorators/upper-case.decorator';
+import { LowerCase } from '../../../../common/decorators/lower-case.decorator';
 
 export class CreateResearcherRequestDto {
   @ApiProperty({ description: 'DNI del investigador (8 dígitos)', example: '12345678' })
@@ -23,6 +24,7 @@ export class CreateResearcherRequestDto {
   @ApiPropertyOptional({ description: 'Correo electrónico del investigador', example: 'juan.perez@example.com' })
   @IsOptional()
   @IsEmail()
+  @LowerCase()
   email?: string;
 
   @ApiPropertyOptional({ description: 'Teléfono del investigador', example: '987654321' })

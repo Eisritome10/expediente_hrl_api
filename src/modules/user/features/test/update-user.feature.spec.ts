@@ -1,7 +1,9 @@
+import { UserRole, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { UpdateUserFeature } from '../update-user.feature';
 import { FindUserByIdFeature } from '../find-user-by-id.feature';
 import { UserNotFoundException } from '../../exceptions/user-not-found.exception';
+import { UserManagedByResearcherException } from '../../exceptions/user-managed-by-researcher.exception';
 
 describe('UpdateUserFeature', () => {
   const prisma = { user: { update: jest.fn() } } as unknown as PrismaService;
@@ -33,5 +35,34 @@ describe('UpdateUserFeature', () => {
       UserNotFoundException,
     );
     expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('throws UserManagedByResearcherException and does not update when a linked user changes role', async () => {
+    (findUserByIdFeature.execute as jest.Mock).mockResolvedValue({
+      id: 'u1',
+      role: UserRole.NURSE,
+      researcherId: 'r1',
+    });
+
+    await expect(feature.execute('u1', { role: UserRole.ADMIN })).rejects.toBeInstanceOf(
+      UserManagedByResearcherException,
+    );
+    expect(prisma.user.update).not.toHaveBeenCalled();
+  });
+
+  it('allows updating only the status of a linked user', async () => {
+    const updated = { id: 'u1', status: UserStatus.INACTIVE };
+    (findUserByIdFeature.execute as jest.Mock).mockResolvedValue({
+      id: 'u1',
+      role: UserRole.NURSE,
+      researcherId: 'r1',
+    });
+    (prisma.user.update as jest.Mock).mockResolvedValue(updated);
+
+    await expect(feature.execute('u1', { status: UserStatus.INACTIVE })).resolves.toEqual(updated);
+    expect(prisma.user.update).toHaveBeenCalledWith({
+      where: { id: 'u1' },
+      data: { status: UserStatus.INACTIVE },
+    });
   });
 });

@@ -20,6 +20,7 @@ model Researcher {
   protocolsAsPrincipal      Protocol[]               @relation("ProtocolInvestigadorPrincipal")
   protocolCoinvestigaciones ProtocolCoinvestigador[]  @relation("ProtocolCoinvestigadores")
   protocolAsesorias         ProtocolAsesor[]          @relation("ProtocolAsesores")
+  user                      User?
 
   @@map("researchers")
 }
@@ -79,6 +80,7 @@ enum UserRole {
   NURSE
   DOCTOR
   STATISTICIAN
+  RESEARCHER
 }
 
 enum UserStatus {
@@ -93,11 +95,14 @@ model User {
   passwordHash String
   role         UserRole   @default(NURSE)
   status       UserStatus @default(ACTIVE)
+  email        String?    @unique
+  researcherId String?    @unique
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   protocolReviews ProtocolReview[]
+  researcher      Researcher?     @relation(fields: [researcherId], references: [id], onDelete: Cascade)
 
   @@map("users")
 }
@@ -149,9 +154,29 @@ model Modality {
 
 enum ProtocolStatus {
   CREATED
-  OBSERVED
-  CORRECTED
+  CIC_OBSERVED
+  CIC_CORRECTED
+  CIEI_OBSERVED
+  CIEI_CORRECTED
   FINALIZED
+}
+
+enum Committee {
+  CIC
+  CIEI
+}
+
+enum ReviewOutcome {
+  OBSERVED
+  APPROVED
+  FINALIZED
+}
+
+enum RiskLevel {
+  NO_RISK
+  MINIMAL_RISK
+  MODERATE_RISK
+  HIGH_RISK
 }
 
 model Protocol {
@@ -201,6 +226,13 @@ model Protocol {
 
   certificadoBuenasPracticas Boolean @default(false)
 
+  tieneConstanciaEtica         Boolean   @default(false)
+  idConstanciaEtica            String?
+  fechaConstancia               DateTime?
+  catalogadoRiesgo              RiskLevel?
+  consentimientoInformado       Boolean   @default(false)
+  departamentoDirigidoPermiso   String?
+
   coinvestigadores ProtocolCoinvestigador[]
   asesores         ProtocolAsesor[]
   destinos         ProtocolDestino[]
@@ -222,7 +254,8 @@ model ProtocolReview {
   reviewerId String
   reviewer   User @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
 
-  status       ProtocolStatus
+  committee    Committee
+  outcome      ReviewOutcome
   observations String?
 
   createdAt DateTime @default(now())

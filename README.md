@@ -23,26 +23,34 @@
 
 | Entidad | Ruta base | Operaciones | Protección |
 |---|---|---|---|
-| `Researcher` (Investigador) | `/researchers` | CRUD completo | `ADMIN` |
+| `Researcher` (Investigador) | `/researchers` | CRUD completo; al crearlo se crea su cuenta de usuario (ver abajo) | `ADMIN` |
 | `Institution` (Institución) | `/institutions` | CRUD completo | `ADMIN` |
 | `Faculty` (Facultad) | `/faculties` | CRUD completo | `ADMIN` |
 | `Destination` (Destino) | `/destinations` | CRUD completo | `ADMIN` |
 | `Modality` (Modalidad) | `/modalities` | CRUD completo | `ADMIN` |
 | `StudyDesign` (Diseño de Estudio) | `/study-designs` | CRUD completo | `ADMIN` |
-| `ResearchLine` (Línea de Investigación) | `/research-lines` | Solo lectura (`GET`, filtrable por `type`) | `ADMIN` |
-| `User` (Usuario) | — | Sin CRUD propio todavía; existe el modelo y un seeder de usuario admin inicial | — |
-| `Protocol` (Protocolo) | `/protocols` | `POST` (crear), `GET` (listar, filtrable), `GET /:id` | `ADMIN` |
-| `Auth` | `/auth/login`, `/auth/refresh` | Login y refresco de tokens | Pública (login) / Bearer refresh token (`/refresh`) |
+| `Agreement` (Convenio) | `/agreements` | CRUD completo | `ADMIN` |
+| `ResearchLine` (Línea de Investigación) | `/research-lines` | CRUD completo (`GET` filtrable por `type`) | `ADMIN` |
+| `User` (Usuario) | `/users` | CRUD completo (`username` inmutable; sin cambio de contraseña en `PATCH`) | `ADMIN` |
+| `Protocol` (Protocolo) | `/protocols` | `POST`, `GET` (filtrable), `GET /:id`, `PATCH /:id` (solo mientras esté observado) | `ADMIN` |
+| `Protocol` — vista del investigador | `/protocols/mine` | `GET` paginado con sus protocolos (principal, coinvestigador o asesor) y su estado actual | `RESEARCHER` |
+| `ProtocolReview` (Revisión de Protocolo) | `/protocols/:protocolId/reviews` | `POST`, `GET` (historial inmutable, comités CIC y CIEI) | `ADMIN` |
+| `Auth` | `/auth/login`, `/auth/refresh` | Login (campo `identifier`: username/DNI o correo) y refresco de tokens | Pública (login) / Bearer refresh token (`/refresh`) |
 
-Todas las rutas de catálogo (`researchers`, `institutions`, `faculties`, `destinations`, `modalities`, `study-designs`, `research-lines`) y `protocols` requieren un access token JWT válido y el rol `ADMIN`, vía el decorador compuesto `@UseAuth(UserRole.ADMIN)`.
+Todas las rutas de catálogo y `protocols` requieren un access token JWT válido y el rol `ADMIN`, vía el decorador compuesto `@UseAuth(UserRole.ADMIN)`. La única excepción es `GET /protocols/mine`, exclusivo del rol `RESEARCHER`; un investigador recibe `403` en cualquier otro endpoint protegido y el `ADMIN` recibe `403` en `/protocols/mine`.
+
+### Cuentas de investigador y login
+
+- Al crear un investigador se crea en la misma transacción su `User` (rol `RESEARCHER`, `username` = DNI, `email` = correo del investigador, contraseña inicial = DNI, hasheada con `argon2`). `User.researcherId` (único) vincula ambos.
+- `POST /auth/login` recibe `{ identifier, password }`; `identifier` es el username (DNI para investigadores) o el correo electrónico, resuelto con una sola consulta.
+- Un usuario vinculado a un investigador no puede cambiar de rol.
 
 Un protocolo puede tener varios diseños de estudio a la vez (relación N:N vía `ProtocolStudyDesign`, igual patrón que `destinos`/coinvestigadores/asesores): se envían como `studyDesignIds: string[]` al crear el protocolo y se devuelven como `disenosEstudio` en la respuesta.
 
 ### Pendiente (según la guía de migración, ver `guia-implementacion-nestjs-prisma-investigahrl.md`)
 
-- CRUD de `User` (el modelo y el login ya existen; falta el módulo de gestión de usuarios)
-- `Protocolo` — implementado `create`/`list`/`get`; falta `update`/`delete` si el negocio los requiere
-- `RevisionProtocolo` — historial de revisiones sobre `Protocolo`
+- `Protocol` no tiene `delete`; agregarlo solo si el negocio lo requiere
+- Cambio de contraseña (el investigador arranca con su DNI como contraseña)
 
 ## Arquitectura
 
@@ -67,7 +75,7 @@ Piezas compartidas relevantes:
 - `src/common/utils/pagination.util.ts` / `prisma-error.util.ts` — paginación y detección de violación de constraint único, reutilizados por todos los módulos.
 - `src/modules/auth/` — estrategias Passport (`jwt-access`/`jwt-refresh`), guards (`JwtAccessGuard`, `JwtRefreshGuard`, `RolesGuard`) y el decorador `@UseAuth(...roles)` que protege el resto de los controladores.
 - `src/prisma/` — `PrismaService` (driver adapter `pg`) y `PrismaModule` (`@Global()`).
-- `src/seeder/` — crea un usuario `ADMIN` inicial al arrancar la app, a partir de `SEED_ADMIN_PASSWORD`.
+- `src/seeder/` — crea al arrancar la app el usuario inicial (`username: ADMIN`, `email: admin@admin.com`, rol `ADMIN`) con la contraseña de `SEED_ADMIN_PASSWORD`; renombra un `admin` legacy a `ADMIN` sin cambiar su contraseña.
 
 Ver [CLAUDE.md](CLAUDE.md) para las convenciones completas (nomenclatura, plantilla de módulo, composición del schema de Prisma) que debe seguir cualquier módulo nuevo.
 
@@ -94,7 +102,7 @@ Variables requeridas (ver `.env.example`):
 | `DATABASE_URL` | Cadena de conexión de PostgreSQL (ej. `postgresql://usuario:password@host:5432/db`) |
 | `JWT_ACCESS_SECRET` / `JWT_REFRESH_SECRET` | Secretos de firma JWT, mínimo 32 caracteres cada uno, deben ser distintos entre sí |
 | `JWT_ACCESS_EXPIRES_IN` / `JWT_REFRESH_EXPIRES_IN` | Expiración de tokens (ej. `15m`, `7d`) |
-| `SEED_ADMIN_PASSWORD` | Contraseña del usuario `admin` que crea el seeder en el primer arranque |
+| `SEED_ADMIN_PASSWORD` | Contraseña del usuario `ADMIN` que crea el seeder en el primer arranque (por defecto `ADMIN`) |
 
 `.env.<NODE_ENV>` se elige automáticamente según el script (`dotenv -e .env.development`, `.env.test`, etc.) — no hace falta exportar `NODE_ENV` a mano salvo en producción, donde los scripts `build`/`start`/`deploy` ya lo fijan a `production` (los secretos en ese caso deben venir del entorno del host, no de un archivo `.env` versionado).
 
@@ -123,7 +131,7 @@ Con los [requisitos previos](#requisitos-previos) instalados y el `.env.developm
    $ yarn prisma:dev:migrate
    ```
 
-5. **Ejecutar el seed** (crea el usuario `admin` inicial y, si corresponde, datos de catálogo):
+5. **Ejecutar el seed** (crea el usuario `ADMIN` inicial y, si corresponde, datos de catálogo):
    ```bash
    $ yarn prisma:dev:seed
    ```
@@ -132,7 +140,7 @@ Con los [requisitos previos](#requisitos-previos) instalados y el `.env.developm
    ```bash
    $ yarn start:dev
    ```
-   Al arrancar, el `SeederService` también crea automáticamente el usuario `admin` (rol `ADMIN`) si no existe, usando `SEED_ADMIN_PASSWORD`. Con ese usuario se obtiene el primer access token vía `POST /auth/login`. La documentación interactiva (Swagger) queda disponible en `/api/docs` y todas las rutas de negocio cuelgan del prefijo global `/api/v1`.
+   Al arrancar, el `SeederService` también crea automáticamente el usuario `ADMIN` (email `admin@admin.com`, rol `ADMIN`) si no existe, usando `SEED_ADMIN_PASSWORD`. Con ese usuario se obtiene el primer access token vía `POST /auth/login` (`identifier`: `ADMIN` o `admin@admin.com`). La documentación interactiva (Swagger) queda disponible en `/api/docs` y todas las rutas de negocio cuelgan del prefijo global `/api/v1`.
 
 ### Otros comandos útiles de base de datos
 
@@ -168,7 +176,7 @@ No hay `Dockerfile` ni pipeline de CI/CD en el repositorio todavía: el desplieg
    $ yarn start:prod
    ```
    Esto corre `node dist/main.js` directamente; en producción real se recomienda ponerlo detrás de un supervisor de procesos (`pm2`, el propio manejador de servicios del PaaS, o un `systemd` unit) para reinicios automáticos, y detrás de un reverse proxy (nginx, Caddy, el balanceador del PaaS) que termine TLS.
-6. El seeder crea el usuario `admin` inicial en el primer arranque contra una base vacía; en arranques posteriores lo detecta y no lo duplica.
+6. El seeder crea el usuario `ADMIN` inicial en el primer arranque contra una base vacía; en arranques posteriores lo detecta y no lo duplica.
 
 Alternativa disponible sin configurar nada de infraestructura propia: `yarn deploy` (`nest deploy`) usa `@nestjs/mau` para desplegar directamente a NestJS Mau — requiere una cuenta de Mau vinculada y no reemplaza los pasos 1-2 de configurar la base de datos y las variables de entorno.
 

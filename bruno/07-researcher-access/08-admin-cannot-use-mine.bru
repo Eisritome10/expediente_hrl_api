@@ -1,0 +1,14 @@
+meta {
+  name: 08-admin-cannot-use-mine
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/protocols/mine
+  auth: inherit
+}
+
+assert {
+  res.status: eq 403
+}

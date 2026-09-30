@@ -32,7 +32,7 @@ describe('UpdateProtocolFeature', () => {
 
   const observedProtocol = {
     id: 'p1',
-    status: ProtocolStatus.OBSERVED,
+    status: ProtocolStatus.CIC_OBSERVED,
     nroExpediente: '542/2026',
     fechaRecepcion: new Date('2026-01-15'),
     titulo: 'ESTUDIO DE PRUEBA',
@@ -81,16 +81,16 @@ describe('UpdateProtocolFeature', () => {
     (tx.protocol.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
   });
 
-  it('updates only the given field, keeping the rest and moving status to CORRECTED', async () => {
+  it('updates only the given field, keeping the rest and moving status to CIC_CORRECTED', async () => {
     mockValidReferences();
-    const updated = { id: 'p1', status: ProtocolStatus.CORRECTED };
+    const updated = { id: 'p1', status: ProtocolStatus.CIC_CORRECTED };
     (tx.protocol.update as jest.Mock).mockResolvedValue(updated);
 
     await expect(feature.execute('p1', { titulo: 'NUEVO TITULO' })).resolves.toEqual(updated);
 
     expect(tx.protocol.updateMany).toHaveBeenCalledWith({
-      where: { id: 'p1', status: ProtocolStatus.OBSERVED },
-      data: { status: ProtocolStatus.CORRECTED },
+      where: { id: 'p1', status: ProtocolStatus.CIC_OBSERVED },
+      data: { status: ProtocolStatus.CIC_CORRECTED },
     });
     expect(tx.protocol.update).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -149,7 +149,12 @@ describe('UpdateProtocolFeature', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it.each([ProtocolStatus.CREATED, ProtocolStatus.CORRECTED, ProtocolStatus.FINALIZED])(
+  it.each([
+    ProtocolStatus.CREATED,
+    ProtocolStatus.CIC_CORRECTED,
+    ProtocolStatus.CIEI_CORRECTED,
+    ProtocolStatus.FINALIZED,
+  ])(
     'throws ProtocolNotObservedException when the protocol is %s, without validating anything',
     async (status) => {
       (findProtocolByIdFeature.execute as jest.Mock).mockResolvedValue({ ...observedProtocol, status });
@@ -159,6 +164,22 @@ describe('UpdateProtocolFeature', () => {
       expect(prisma.$transaction).not.toHaveBeenCalled();
     },
   );
+
+  it('accepts a patch while CIEI_OBSERVED, moving status to CIEI_CORRECTED', async () => {
+    (findProtocolByIdFeature.execute as jest.Mock).mockResolvedValue({
+      ...observedProtocol,
+      status: ProtocolStatus.CIEI_OBSERVED,
+    });
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { titulo: 'NUEVO TITULO' });
+
+    expect(tx.protocol.updateMany).toHaveBeenCalledWith({
+      where: { id: 'p1', status: ProtocolStatus.CIEI_OBSERVED },
+      data: { status: ProtocolStatus.CIEI_CORRECTED },
+    });
+  });
 
   it('throws ProtocolNotObservedException on a concurrent status race, without calling update', async () => {
     mockValidReferences();

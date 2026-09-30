@@ -19,6 +19,9 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.USER_INACTIVE]: HttpStatus.FORBIDDEN,
     [DomainErrorCode.USER_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.USER_USERNAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+    [DomainErrorCode.USER_EMAIL_ALREADY_EXISTS]: HttpStatus.CONFLICT,
+    [DomainErrorCode.USER_MANAGED_BY_RESEARCHER]: HttpStatus.CONFLICT,
+    [DomainErrorCode.RESEARCHER_ACCOUNT_NOT_LINKED]: HttpStatus.FORBIDDEN,
     [DomainErrorCode.RESEARCH_LINE_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.RESEARCH_LINE_NAME_AND_TYPE_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.RESEARCH_LINE_IN_USE_BY_PROTOCOL]: HttpStatus.CONFLICT,
@@ -43,6 +46,14 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.PROTOCOL_REVIEW_OBSERVATIONS_REQUIRED]: HttpStatus.BAD_REQUEST,
     [DomainErrorCode.PROTOCOL_REVIEW_PROTOCOL_ALREADY_FINALIZED]: HttpStatus.CONFLICT,
     [DomainErrorCode.USER_IN_USE_BY_PROTOCOL_REVIEW]: HttpStatus.CONFLICT,
+    [DomainErrorCode.PROTOCOL_REVIEW_INVALID_OUTCOME_FOR_COMMITTEE]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOL_REVIEW_ETHICS_FIELDS_NOT_ALLOWED]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOL_REVIEW_CONSTANCIA_INCOMPLETE]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOL_REVIEW_FINALIZATION_INCOMPLETE]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.PROTOCOL_REVIEW_COMMITTEE_CLOSED]: HttpStatus.CONFLICT,
+    [DomainErrorCode.PROTOCOL_REVIEW_CIC_APPROVAL_REQUIRED]: HttpStatus.CONFLICT,
+    [DomainErrorCode.PROTOCOL_REVIEW_OBSERVATION_PENDING]: HttpStatus.CONFLICT,
+    [DomainErrorCode.PROTOCOL_REVIEW_CONCURRENT_UPDATE]: HttpStatus.CONFLICT,
   };
 
   catch(exception: DomainException, host: ArgumentsHost) {

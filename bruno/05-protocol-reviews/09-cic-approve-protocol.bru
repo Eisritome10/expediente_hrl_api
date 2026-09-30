@@ -1,7 +1,7 @@
 meta {
-  name: 08-finalize-protocol
+  name: 09-cic-approve-protocol
   type: http
-  seq: 8
+  seq: 9
 }
 
 post {
@@ -12,12 +12,14 @@ post {
 
 body:json {
   {
-    "status": "FINALIZED"
+    "committee": "CIC",
+    "outcome": "APPROVED"
   }
 }
 
 assert {
   res.status: eq 201
-  res.body.status: eq FINALIZED
+  res.body.committee: eq CIC
+  res.body.outcome: eq APPROVED
   res.body.observations: isNull
 }

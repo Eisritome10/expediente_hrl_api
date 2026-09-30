@@ -1,0 +1,23 @@
+meta {
+  name: 16-ciei-finalize-without-ethics-fields-fails
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/protocols/{{protocolId}}/reviews
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "committee": "CIEI",
+    "outcome": "FINALIZED"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.errorCode: eq PROTOCOL_REVIEW_FINALIZATION_INCOMPLETE
+}
