@@ -1,4 +1,4 @@
-import { LineType, Prisma, ProtocolStatus } from '@prisma/client';
+import { InstitutionType, LineType, Prisma, ProtocolStatus } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { UpdateProtocolFeature } from '../update-protocol.feature';
 import { FindProtocolByIdFeature } from '../find-protocol-by-id.feature';
@@ -9,6 +9,8 @@ import { ProtocolNroExpedienteAlreadyExistsException } from '../../exceptions/pr
 import { ProtocoloInvestigadorDuplicadoException } from '../../exceptions/protocolo-investigador-duplicado.exception';
 import { ProtocoloFacultadRequiereUniversidadException } from '../../exceptions/protocolo-facultad-requiere-universidad.exception';
 import { ProtocoloMemosNoAplicablesException } from '../../exceptions/protocolo-memos-no-aplicables.exception';
+import { ProtocoloConstanciaEticaIncompletaException } from '../../exceptions/protocolo-constancia-etica-incompleta.exception';
+import { ProtocoloComprobanteInvalidoException } from '../../exceptions/protocolo-comprobante-invalido.exception';
 
 describe('UpdateProtocolFeature', () => {
   const tx = {
@@ -45,12 +47,20 @@ describe('UpdateProtocolFeature', () => {
     lineaHrlId: 'lh1',
     lineaMeta2030Id: 'lm1',
     modalidadId: 'm1',
-    propositoRevision: 'REVISION INICIAL',
+    propositoRevision: null,
     fechaRevision: null,
-    tipoComprobante: null,
-    comprobanteRevision: null,
+    tipoComprobante: 'BOLETA',
+    comprobanteRevision: 'B001-123',
     pagoRevision: 150,
+    tieneConstanciaEtica: false,
+    idConstanciaEtica: null,
+    fechaConstancia: null,
+    consentimientoInformado: false,
+    departamentoDirigidoPermiso: null,
+    catalogadoRiesgo: null,
     esEnmienda: false,
+    protocoloOriginalId: null,
+    protocoloOriginal: null,
     requiereRevisionHc: false,
     montoHc: null,
     tipoComprobanteHc: null,
@@ -64,8 +74,8 @@ describe('UpdateProtocolFeature', () => {
 
   const mockValidReferences = () => {
     (prisma.researcher.findUnique as jest.Mock).mockResolvedValue({ id: 'r1' });
-    (prisma.institution.findUnique as jest.Mock).mockResolvedValue({ id: 'i1', esUniversidad: true });
-    (prisma.faculty.findUnique as jest.Mock).mockResolvedValue({ id: 'f1' });
+    (prisma.institution.findUnique as jest.Mock).mockResolvedValue({ id: 'i1', type: InstitutionType.UNIVERSITY });
+    (prisma.faculty.findUnique as jest.Mock).mockResolvedValue({ id: 'f1', institutionId: 'i1' });
     (prisma.researchLine.findUnique as jest.Mock)
       .mockResolvedValueOnce({ id: 'lh1', type: LineType.HRL })
       .mockResolvedValueOnce({ id: 'lm1', type: LineType.META_2030 });
@@ -130,7 +140,7 @@ describe('UpdateProtocolFeature', () => {
     expect(dataArg.convenio).toEqual({ disconnect: true });
   });
 
-  it('forces pagoRevision to 0 when convenioId is set', async () => {
+  it('connects convenio and forces the payment to 0 with no receipt', async () => {
     mockValidReferences();
     (prisma.agreement.findUnique as jest.Mock).mockResolvedValue({ id: 'a1' });
     (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
@@ -140,6 +150,128 @@ describe('UpdateProtocolFeature', () => {
     const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
     expect(dataArg.convenio).toEqual({ connect: { id: 'a1' } });
     expect(dataArg.pagoRevision).toBe(0);
+    expect(dataArg.tipoComprobante).toBeNull();
+    expect(dataArg.comprobanteRevision).toBeNull();
+  });
+
+  it('keeps the current payment when it is not exonerated and the patch does not touch it', async () => {
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { titulo: 'OTRO TITULO' });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.pagoRevision).toBe(150);
+    expect(dataArg.tipoComprobante).toBe('BOLETA');
+    expect(dataArg.comprobanteRevision).toBe('B001-123');
+  });
+
+  it('writes a corrected payment when the patch sends it and the protocol is not exonerated', async () => {
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { pagoRevision: 180, tipoComprobante: 'FACTURA', comprobanteRevision: 'F001-9' });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.pagoRevision).toBe(180);
+    expect(dataArg.tipoComprobante).toBe('FACTURA');
+    expect(dataArg.comprobanteRevision).toBe('F001-9');
+  });
+
+  it('writes the corrected ethics documentation sent in the patch', async () => {
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+    const fecha = new Date('2026-02-01');
+
+    await feature.execute('p1', {
+      tieneConstanciaEtica: true,
+      idConstanciaEtica: 'CE-77',
+      fechaConstancia: fecha,
+      consentimientoInformado: true,
+    });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.tieneConstanciaEtica).toBe(true);
+    expect(dataArg.idConstanciaEtica).toBe('CE-77');
+    expect(dataArg.fechaConstancia).toBe(fecha);
+    expect(dataArg.consentimientoInformado).toBe(true);
+  });
+
+  it('throws ProtocoloConstanciaEticaIncompletaException when the merged state declares a constancia without code', async () => {
+    await expect(feature.execute('p1', { tieneConstanciaEtica: true })).rejects.toBeInstanceOf(
+      ProtocoloConstanciaEticaIncompletaException,
+    );
+    expect(tx.protocol.update).not.toHaveBeenCalled();
+  });
+
+  it('clears the payment and the department when the patch sends explicit nulls', async () => {
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', {
+      pagoRevision: null,
+      tipoComprobante: null,
+      comprobanteRevision: null,
+      departamentoDirigidoPermiso: null,
+    });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.pagoRevision).toBeNull();
+    expect(dataArg.tipoComprobante).toBeNull();
+    expect(dataArg.comprobanteRevision).toBeNull();
+    expect(dataArg.departamentoDirigidoPermiso).toBeNull();
+  });
+
+  it('does not keep a fake 0 payment when the patch removes the convenio of an exonerated protocol', async () => {
+    (findProtocolByIdFeature.execute as jest.Mock).mockResolvedValue({
+      ...observedProtocol,
+      convenioId: 'a1',
+      pagoRevision: 0,
+      tipoComprobante: null,
+      comprobanteRevision: null,
+    });
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { convenioId: null });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.convenio).toEqual({ disconnect: true });
+    expect(dataArg.pagoRevision).toBeNull();
+  });
+
+  it('does not block an unrelated correction when the stored receipt does not meet the format', async () => {
+    (findProtocolByIdFeature.execute as jest.Mock).mockResolvedValue({
+      ...observedProtocol,
+      tipoComprobante: 'BOLETA',
+      comprobanteRevision: '123',
+    });
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await expect(feature.execute('p1', { titulo: 'OTRO TITULO' })).resolves.toEqual({ id: 'p1' });
+  });
+
+  it('validates the receipt format when the patch sends a corrected receipt', async () => {
+    await expect(
+      feature.execute('p1', { tipoComprobante: 'BOLETA', comprobanteRevision: 'F001-9' }),
+    ).rejects.toBeInstanceOf(ProtocoloComprobanteInvalidoException);
+    expect(tx.protocol.update).not.toHaveBeenCalled();
+  });
+
+  it('never writes review purpose, review date, risk level, amendment or original protocol', async () => {
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { titulo: 'OTRO TITULO' });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.propositoRevision).toBeUndefined();
+    expect(dataArg.fechaRevision).toBeUndefined();
+    expect(dataArg.catalogadoRiesgo).toBeUndefined();
+    expect(dataArg.esEnmienda).toBeUndefined();
+    expect(dataArg.protocoloOriginalId).toBeUndefined();
+    expect(dataArg.protocoloOriginal).toBeUndefined();
   });
 
   it('propagates ProtocolNotFoundException without opening a transaction', async () => {
@@ -203,7 +335,7 @@ describe('UpdateProtocolFeature', () => {
 
   it('re-evaluates references over the merged state (facultad requires universidad)', async () => {
     mockValidReferences();
-    (prisma.institution.findUnique as jest.Mock).mockResolvedValue({ id: 'i1', esUniversidad: false });
+    (prisma.institution.findUnique as jest.Mock).mockResolvedValue({ id: 'i1', type: InstitutionType.HOSPITAL });
 
     await expect(feature.execute('p1', {})).rejects.toBeInstanceOf(ProtocoloFacultadRequiereUniversidadException);
   });
@@ -223,7 +355,7 @@ describe('UpdateProtocolFeature', () => {
       requiereRevisionHc: true,
       montoHc: new Prisma.Decimal(50),
       tipoComprobanteHc: 'BOLETA',
-      nroComprobanteHc: '001',
+      nroComprobanteHc: 'B001-123',
     });
     mockValidReferences();
     (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });

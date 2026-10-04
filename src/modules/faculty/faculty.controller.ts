@@ -40,7 +40,7 @@ export class FacultyController {
   @ApiOperation({ summary: 'Crear una facultad' })
   @ApiCreatedResponse({ type: FacultyResponseDto })
   async create(@Body() dto: CreateFacultyRequestDto): Promise<FacultyResponseDto> {
-    const faculty = await this.createFacultyFeature.execute({ name: dto.name });
+    const faculty = await this.createFacultyFeature.execute({ name: dto.name, institutionId: dto.institutionId });
 
     return FacultyResponseDto.from(faculty);
   }
@@ -49,7 +49,9 @@ export class FacultyController {
   @ApiOperation({ summary: 'Listar facultades' })
   @ApiPaginatedResponse(FacultyResponseDto)
   async list(@Query() query: ListFacultiesQueryDto): Promise<PaginatedResultResponseDto<FacultyResponseDto>> {
-    const { data, page, limit, total } = await this.listFacultiesFeature.execute(query.page, query.limit);
+    const { data, page, limit, total } = await this.listFacultiesFeature.execute(query.page, query.limit, {
+      institutionId: query.institutionId,
+    });
 
     return PaginatedResultResponseDto.from(data.map(FacultyResponseDto.from), page, limit, total);
   }

@@ -29,7 +29,7 @@ describe('UpdateFacultyFeature', () => {
       new Prisma.PrismaClientKnownRequestError('duplicate', {
         code: 'P2002',
         clientVersion: '7.10.0',
-        meta: { driverAdapterError: { cause: { constraint: { index: 'faculties_name_key' } } } },
+        meta: { driverAdapterError: { cause: { constraint: { index: 'faculties_institutionId_name_key' } } } },
       }),
     );
 

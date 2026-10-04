@@ -38,7 +38,8 @@ export class ProtocolReviewController {
   @ApiCreatedResponse({ type: ProtocolReviewResponseDto })
   @ApiNotFoundResponse({ description: 'El protocolo no existe' })
   @ApiBadRequestResponse({
-    description: 'Outcome invalido para el comite, campos de etica no permitidos en CIC, o constancia/finalizacion incompleta',
+    description:
+      'Outcome invalido para el comite, observaciones faltantes o sin texto, riesgo en un dictamen CIC, o finalizacion sin nivel de riesgo, sin constancia/consentimiento registrados o sin certificado de buenas practicas cuando el protocolo requiere historia clinica',
   })
   @ApiConflictResponse({
     description:
@@ -55,13 +56,8 @@ export class ProtocolReviewController {
       reviewerId: user.id,
       committee: dto.committee,
       outcome: dto.outcome,
-      observations: dto.observations ?? null,
-      tieneConstanciaEtica: dto.tieneConstanciaEtica,
-      idConstanciaEtica: dto.idConstanciaEtica,
-      fechaConstancia: dto.fechaConstancia ? new Date(dto.fechaConstancia) : undefined,
+      observations: (dto.observations ?? []).map(({ type, text }) => ({ type, text })),
       catalogadoRiesgo: dto.catalogadoRiesgo,
-      consentimientoInformado: dto.consentimientoInformado,
-      departamentoDirigidoPermiso: dto.departamentoDirigidoPermiso,
     });
 
     return ProtocolReviewResponseDto.from(review);

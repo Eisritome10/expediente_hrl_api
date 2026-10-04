@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import {
   ApiBearerAuth,
+  ApiConflictResponse,
   ApiCreatedResponse,
   ApiNoContentResponse,
   ApiNotFoundResponse,
@@ -43,7 +44,7 @@ export class InstitutionController {
     const institution = await this.createInstitutionFeature.execute({
       name: dto.name,
       abbreviation: dto.abbreviation ?? null,
-      esUniversidad: dto.esUniversidad ?? false,
+      type: dto.type,
     });
 
     return InstitutionResponseDto.from(institution);
@@ -74,6 +75,9 @@ export class InstitutionController {
   @ApiParam({ name: 'id', description: 'Id de la institución' })
   @ApiOkResponse({ type: InstitutionResponseDto })
   @ApiNotFoundResponse({ description: 'La institución no existe' })
+  @ApiConflictResponse({
+    description: 'El nombre ya existe o la universidad aún tiene facultades y no puede cambiar de tipo',
+  })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateInstitutionRequestDto,

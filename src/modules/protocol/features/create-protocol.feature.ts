@@ -23,17 +23,20 @@ export type CreateProtocolInput = {
   lineaHrlId: string;
   lineaMeta2030Id: string;
   modalidadId: string;
-  propositoRevision: string;
-  fechaRevision: Date | null;
+  convenioId: string | null;
+  pagoRevision: number | null;
   tipoComprobante: string | null;
   comprobanteRevision: string | null;
-  pagoRevision: number | null;
-  esEnmienda: boolean;
-  convenioId: string | null;
+  protocoloOriginalId: string | null;
   requiereRevisionHc: boolean;
   montoHc: number | null;
   tipoComprobanteHc: string | null;
   nroComprobanteHc: string | null;
+  tieneConstanciaEtica: boolean;
+  idConstanciaEtica: string | null;
+  fechaConstancia: Date | null;
+  consentimientoInformado: boolean;
+  departamentoDirigidoPermiso: string | null;
   certificadoBuenasPracticas: boolean;
 };
 
@@ -42,7 +45,9 @@ export class CreateProtocolFeature {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(input: CreateProtocolInput): Promise<ProtocolWithRelations> {
-    const rules = applyProtocoloRules(input);
+    // Una enmienda es un protocolo que referencia a otro protocolo finalizado.
+    const esEnmienda = input.protocoloOriginalId !== null;
+    const rules = applyProtocoloRules({ ...input, esEnmienda });
     await validateProtocolReferences(this.prisma, input);
 
     try {
@@ -60,17 +65,23 @@ export class CreateProtocolFeature {
           lineaHrl: { connect: { id: input.lineaHrlId } },
           lineaMeta2030: { connect: { id: input.lineaMeta2030Id } },
           modalidad: { connect: { id: input.modalidadId } },
-          propositoRevision: input.propositoRevision,
-          fechaRevision: input.fechaRevision,
-          tipoComprobante: input.tipoComprobante,
-          comprobanteRevision: input.comprobanteRevision,
           pagoRevision: rules.pagoRevision,
-          esEnmienda: input.esEnmienda,
+          tipoComprobante: rules.tipoComprobante,
+          comprobanteRevision: rules.comprobanteRevision,
+          esEnmienda,
+          protocoloOriginal: input.protocoloOriginalId
+            ? { connect: { id: input.protocoloOriginalId } }
+            : undefined,
           requiereRevisionHc: input.requiereRevisionHc,
           montoHc: rules.montoHc,
           tipoComprobanteHc: rules.tipoComprobanteHc,
           nroComprobanteHc: rules.nroComprobanteHc,
-          certificadoBuenasPracticas: input.certificadoBuenasPracticas,
+          tieneConstanciaEtica: input.tieneConstanciaEtica,
+          idConstanciaEtica: rules.idConstanciaEtica,
+          fechaConstancia: rules.fechaConstancia,
+          consentimientoInformado: input.consentimientoInformado,
+          departamentoDirigidoPermiso: input.departamentoDirigidoPermiso,
+          certificadoBuenasPracticas: rules.certificadoBuenasPracticas,
           coinvestigadores: { create: input.coinvestigadorIds.map((researcherId) => ({ researcherId })) },
           asesores: { create: input.asesorIds.map((researcherId) => ({ researcherId })) },
           destinos: { create: rules.destinoIds.map((destinationId) => ({ destinationId })) },

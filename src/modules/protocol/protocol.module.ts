@@ -7,6 +7,7 @@ import { ListProtocolsFeature } from './features/list-protocols.feature';
 import { FindProtocolByIdFeature } from './features/find-protocol-by-id.feature';
 import { UpdateProtocolFeature } from './features/update-protocol.feature';
 import { ListResearcherProtocolsFeature } from './features/list-researcher-protocols.feature';
+import { FindResearcherProtocolByIdFeature } from './features/find-researcher-protocol-by-id.feature';
 
 @Module({
   imports: [PrismaModule, AuthModule],
@@ -15,6 +16,7 @@ import { ListResearcherProtocolsFeature } from './features/list-researcher-proto
     CreateProtocolFeature,
     ListProtocolsFeature,
     ListResearcherProtocolsFeature,
+    FindResearcherProtocolByIdFeature,
     FindProtocolByIdFeature,
     UpdateProtocolFeature,
   ],

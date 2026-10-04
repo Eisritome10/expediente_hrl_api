@@ -39,6 +39,20 @@ class ProtocolRelatedEntityResponseDto {
   }
 }
 
+class ProtocolOriginalResponseDto {
+  @ApiProperty() readonly id: string;
+  @ApiProperty() readonly nroExpediente: string;
+
+  private constructor(id: string, nroExpediente: string) {
+    this.id = id;
+    this.nroExpediente = nroExpediente;
+  }
+
+  static of(id: string, nroExpediente: string): ProtocolOriginalResponseDto {
+    return new ProtocolOriginalResponseDto(id, nroExpediente);
+  }
+}
+
 class ProtocolRelatedModalityResponseDto {
   @ApiProperty() readonly id: string;
   @ApiProperty() readonly name: string;
@@ -95,13 +109,17 @@ export class ProtocolResponseDto {
   @ApiProperty({ type: ProtocolRelatedModalityResponseDto })
   readonly modalidad: ProtocolRelatedModalityResponseDto;
 
-  @ApiProperty() readonly propositoRevision: string;
+  @ApiPropertyOptional({ nullable: true, description: 'Dato histórico: ya no se pide al registrar' })
+  readonly propositoRevision: string | null;
   @ApiPropertyOptional({ nullable: true }) readonly fechaRevision: Date | null;
   @ApiPropertyOptional({ nullable: true }) readonly tipoComprobante: string | null;
   @ApiPropertyOptional({ nullable: true }) readonly comprobanteRevision: string | null;
   @ApiPropertyOptional({ nullable: true }) readonly pagoRevision: number | null;
 
   @ApiProperty() readonly esEnmienda: boolean;
+  @ApiPropertyOptional({ nullable: true }) readonly protocoloOriginalId: string | null;
+  @ApiPropertyOptional({ type: ProtocolOriginalResponseDto, nullable: true })
+  readonly protocoloOriginal: ProtocolOriginalResponseDto | null;
   @ApiProperty() readonly esConvenio: boolean;
   @ApiPropertyOptional({ type: ProtocolRelatedEntityResponseDto, nullable: true })
   readonly convenio: ProtocolRelatedEntityResponseDto | null;
@@ -141,12 +159,14 @@ export class ProtocolResponseDto {
     lineaHrl: ProtocolRelatedEntityResponseDto,
     lineaMeta2030: ProtocolRelatedEntityResponseDto,
     modalidad: ProtocolRelatedModalityResponseDto,
-    propositoRevision: string,
+    propositoRevision: string | null,
     fechaRevision: Date | null,
     tipoComprobante: string | null,
     comprobanteRevision: string | null,
     pagoRevision: number | null,
     esEnmienda: boolean,
+    protocoloOriginalId: string | null,
+    protocoloOriginal: ProtocolOriginalResponseDto | null,
     esConvenio: boolean,
     convenio: ProtocolRelatedEntityResponseDto | null,
     requiereRevisionHc: boolean,
@@ -186,6 +206,8 @@ export class ProtocolResponseDto {
     this.comprobanteRevision = comprobanteRevision;
     this.pagoRevision = pagoRevision;
     this.esEnmienda = esEnmienda;
+    this.protocoloOriginalId = protocoloOriginalId;
+    this.protocoloOriginal = protocoloOriginal;
     this.esConvenio = esConvenio;
     this.convenio = convenio;
     this.requiereRevisionHc = requiereRevisionHc;
@@ -228,6 +250,10 @@ export class ProtocolResponseDto {
       protocol.comprobanteRevision,
       protocol.pagoRevision !== null ? Number(protocol.pagoRevision) : null,
       protocol.esEnmienda,
+      protocol.protocoloOriginalId,
+      protocol.protocoloOriginal
+        ? ProtocolOriginalResponseDto.of(protocol.protocoloOriginal.id, protocol.protocoloOriginal.nroExpediente)
+        : null,
       protocol.convenioId !== null,
       protocol.convenio ? ProtocolRelatedEntityResponseDto.of(protocol.convenio.id, protocol.convenio.name) : null,
       protocol.requiereRevisionHc,

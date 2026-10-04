@@ -25,15 +25,23 @@ model Researcher {
   @@map("researchers")
 }
 
+enum InstitutionType {
+  HOSPITAL
+  UNIVERSITY
+  OTHER
+}
+
 model Institution {
-  id            String   @id @default(uuid())
-  name          String   @unique
-  abbreviation  String?
-  esUniversidad Boolean  @default(false)
+  id           String          @id @default(uuid())
+  name         String          @unique
+  abbreviation String?
+  type         InstitutionType @default(OTHER)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Solo las universidades tienen facultades, cargadas a mano para cada una.
+  faculties Faculty[]
   protocols Protocol[]
 
   @@map("institutions")
@@ -41,13 +49,18 @@ model Institution {
 
 model Faculty {
   id   String @id @default(uuid())
-  name String @unique
+  name String
+
+  // Nulo solo en facultades históricas del catálogo global anterior; las nuevas siempre pertenecen a una universidad.
+  institutionId String?
+  institution   Institution? @relation(fields: [institutionId], references: [id], onDelete: Cascade)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   protocols Protocol[]
 
+  @@unique([institutionId, name])
   @@map("faculties")
 }
 
@@ -211,13 +224,17 @@ model Protocol {
   modalidadId String
   modalidad   Modality @relation(fields: [modalidadId], references: [id])
 
-  propositoRevision   String
+  propositoRevision   String?
   fechaRevision       DateTime?
   tipoComprobante     String?
   comprobanteRevision String?
   pagoRevision        Decimal? @db.Decimal(10, 2)
 
   esEnmienda Boolean @default(false)
+
+  protocoloOriginalId String?
+  protocoloOriginal   Protocol?  @relation("ProtocolEnmiendas", fields: [protocoloOriginalId], references: [id], onDelete: Restrict)
+  enmiendas           Protocol[] @relation("ProtocolEnmiendas")
 
   requiereRevisionHc Boolean  @default(false)
   montoHc            Decimal? @db.Decimal(10, 2)
@@ -258,10 +275,36 @@ model ProtocolReview {
   outcome      ReviewOutcome
   observations String?
 
+  observationItems ProtocolReviewObservation[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("protocol_reviews")
+}
+
+enum ObservationType {
+  INFORMED_CONSENT
+  ETHICS_CONSTANCE
+  ADMINISTRATIVE
+  METHODOLOGICAL
+  LEGAL_INSTITUTIONAL
+}
+
+model ProtocolReviewObservation {
+  id String @id @default(uuid())
+
+  reviewId String
+  review   ProtocolReview @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+
+  type ObservationType
+  text String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([reviewId])
+  @@map("protocol_review_observations")
 }
 
 model ProtocolCoinvestigador {

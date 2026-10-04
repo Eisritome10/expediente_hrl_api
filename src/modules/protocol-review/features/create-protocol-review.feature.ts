@@ -1,25 +1,25 @@
 import { Injectable } from '@nestjs/common';
-import { Committee, ProtocolStatus, ReviewOutcome, RiskLevel, UserStatus } from '@prisma/client';
+import { Committee, ObservationType, ProtocolStatus, ReviewOutcome, RiskLevel, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ProtocolNotFoundException } from '../../protocol/exceptions/protocol-not-found.exception';
 import { ProtocolReviewConcurrentUpdateException } from '../exceptions/protocol-review-concurrent-update.exception';
 import { ProtocolReviewInvalidReviewerException } from '../exceptions/protocol-review-invalid-reviewer.exception';
 import { ProtocolReviewProtocolAlreadyFinalizedException } from '../exceptions/protocol-review-protocol-already-finalized.exception';
 import { PROTOCOL_REVIEW_INCLUDE, ProtocolReviewWithRelations } from '../protocol-review.include';
-import { assertReviewRequest, resolveEthicsUpdate, resolveNextProtocolStatus } from '../protocol-review.rules';
+import {
+  assertCieiFinalizationRequirements,
+  assertReviewRequest,
+  resolveEthicsUpdate,
+  resolveNextProtocolStatus,
+} from '../protocol-review.rules';
 
 export type CreateProtocolReviewInput = {
   protocolId: string;
   reviewerId: string;
   committee: Committee;
   outcome: ReviewOutcome;
-  observations: string | null;
-  tieneConstanciaEtica?: boolean;
-  idConstanciaEtica?: string | null;
-  fechaConstancia?: Date | null;
+  observations: { type: ObservationType; text: string }[];
   catalogadoRiesgo?: RiskLevel | null;
-  consentimientoInformado?: boolean;
-  departamentoDirigidoPermiso?: string | null;
 };
 
 @Injectable()
@@ -27,18 +27,13 @@ export class CreateProtocolReviewFeature {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(input: CreateProtocolReviewInput): Promise<ProtocolReviewWithRelations> {
-    const observations = input.observations?.trim() || null;
+    const observations = input.observations.map(({ type, text }) => ({ type, text: text.trim() }));
 
     assertReviewRequest({
       committee: input.committee,
       outcome: input.outcome,
       observations,
-      tieneConstanciaEtica: input.tieneConstanciaEtica,
-      idConstanciaEtica: input.idConstanciaEtica,
-      fechaConstancia: input.fechaConstancia,
       catalogadoRiesgo: input.catalogadoRiesgo,
-      consentimientoInformado: input.consentimientoInformado,
-      departamentoDirigidoPermiso: input.departamentoDirigidoPermiso,
     });
 
     const reviewer = await this.prisma.user.findUnique({ where: { id: input.reviewerId } });
@@ -48,7 +43,15 @@ export class CreateProtocolReviewFeature {
 
     const protocol = await this.prisma.protocol.findUnique({
       where: { id: input.protocolId },
-      select: { id: true, status: true, updatedAt: true },
+      select: {
+        id: true,
+        status: true,
+        updatedAt: true,
+        requiereRevisionHc: true,
+        tieneConstanciaEtica: true,
+        consentimientoInformado: true,
+        certificadoBuenasPracticas: true,
+      },
     });
     if (!protocol) throw new ProtocolNotFoundException(input.protocolId);
     if (protocol.status === ProtocolStatus.FINALIZED) {
@@ -69,9 +72,18 @@ export class CreateProtocolReviewFeature {
       input.protocolId,
     );
 
+    assertCieiFinalizationRequirements({
+      committee: input.committee,
+      outcome: input.outcome,
+      catalogadoRiesgo: input.catalogadoRiesgo,
+      protocol,
+    });
+
     const ethicsUpdate = resolveEthicsUpdate(input.committee, input);
 
     return this.prisma.$transaction(async (tx) => {
+      // La documentación leída arriba queda protegida por el lock de status + updatedAt: un PATCH concurrente
+      // cambia updatedAt y hace que este updateMany no encuentre fila.
       const { count } = await tx.protocol.updateMany({
         where: { id: input.protocolId, status: protocol.status, updatedAt: protocol.updatedAt },
         data: { status: nextStatus, ...ethicsUpdate },
@@ -85,7 +97,8 @@ export class CreateProtocolReviewFeature {
           reviewerId: input.reviewerId,
           committee: input.committee,
           outcome: input.outcome,
-          observations,
+          observations: null,
+          observationItems: { create: observations.map(({ type, text }) => ({ type, text })) },
         },
         include: PROTOCOL_REVIEW_INCLUDE,
       });

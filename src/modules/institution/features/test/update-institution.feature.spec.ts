@@ -1,11 +1,12 @@
-import { Prisma } from '@prisma/client';
+import { InstitutionType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { UpdateInstitutionFeature } from '../update-institution.feature';
 import { FindInstitutionByIdFeature } from '../find-institution-by-id.feature';
 import { InstitutionNameAlreadyExistsException } from '../../exceptions/institution-name-already-exists.exception';
+import { InstitutionHasFacultiesException } from '../../exceptions/institution-has-faculties.exception';
 
 describe('UpdateInstitutionFeature', () => {
-  const prisma = { institution: { update: jest.fn() } } as unknown as PrismaService;
+  const prisma = { institution: { update: jest.fn() }, faculty: { count: jest.fn() } } as unknown as PrismaService;
   const findInstitutionByIdFeature = { execute: jest.fn() } as unknown as FindInstitutionByIdFeature;
   const feature = new UpdateInstitutionFeature(prisma, findInstitutionByIdFeature);
 
@@ -36,5 +37,35 @@ describe('UpdateInstitutionFeature', () => {
     await expect(
       feature.execute('i1', { name: 'Duplicado' }),
     ).rejects.toBeInstanceOf(InstitutionNameAlreadyExistsException);
+  });
+
+  it('throws InstitutionHasFacultiesException when a university with faculties changes type', async () => {
+    (findInstitutionByIdFeature.execute as jest.Mock).mockResolvedValue({ id: 'i1', type: InstitutionType.UNIVERSITY });
+    (prisma.faculty.count as jest.Mock).mockResolvedValue(3);
+
+    await expect(feature.execute('i1', { type: InstitutionType.OTHER })).rejects.toBeInstanceOf(
+      InstitutionHasFacultiesException,
+    );
+    expect(prisma.institution.update).not.toHaveBeenCalled();
+  });
+
+  it('lets a university without faculties change type', async () => {
+    (findInstitutionByIdFeature.execute as jest.Mock).mockResolvedValue({ id: 'i1', type: InstitutionType.UNIVERSITY });
+    (prisma.faculty.count as jest.Mock).mockResolvedValue(0);
+    (prisma.institution.update as jest.Mock).mockResolvedValue({ id: 'i1', type: InstitutionType.OTHER });
+
+    await expect(feature.execute('i1', { type: InstitutionType.OTHER })).resolves.toEqual({
+      id: 'i1',
+      type: InstitutionType.OTHER,
+    });
+  });
+
+  it('does not count faculties when the type does not change', async () => {
+    (findInstitutionByIdFeature.execute as jest.Mock).mockResolvedValue({ id: 'i1', type: InstitutionType.UNIVERSITY });
+    (prisma.institution.update as jest.Mock).mockResolvedValue({ id: 'i1' });
+
+    await feature.execute('i1', { type: InstitutionType.UNIVERSITY, name: 'NUEVO' });
+
+    expect(prisma.faculty.count).not.toHaveBeenCalled();
   });
 });

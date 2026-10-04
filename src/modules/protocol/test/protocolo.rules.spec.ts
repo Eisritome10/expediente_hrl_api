@@ -3,12 +3,20 @@ import { ProtocoloRevisionHcIncompletaException } from '../exceptions/protocolo-
 import { ProtocoloInvestigadorDuplicadoException } from '../exceptions/protocolo-investigador-duplicado.exception';
 import { ProtocoloLugarEjecucionInconsistenteException } from '../exceptions/protocolo-lugar-ejecucion-inconsistente.exception';
 import { ProtocoloMemosNoAplicablesException } from '../exceptions/protocolo-memos-no-aplicables.exception';
+import { ProtocoloConstanciaEticaIncompletaException } from '../exceptions/protocolo-constancia-etica-incompleta.exception';
+import { ProtocoloComprobanteInvalidoException } from '../exceptions/protocolo-comprobante-invalido.exception';
 
 describe('applyProtocoloRules', () => {
   const baseInput: ProtocoloRulesInput = {
     convenioId: null,
     esEnmienda: false,
     pagoRevision: 150,
+    tipoComprobante: 'BOLETA',
+    comprobanteRevision: 'B001-123',
+    tieneConstanciaEtica: false,
+    idConstanciaEtica: null,
+    fechaConstancia: null,
+    certificadoBuenasPracticas: false,
     requiereRevisionHc: false,
     montoHc: null,
     tipoComprobanteHc: null,
@@ -21,34 +29,6 @@ describe('applyProtocoloRules', () => {
     lugarEjecucion: 'HOSPITAL REGIONAL DE LORETO',
   };
 
-  it('keeps pagoRevision as-is when neither convenio nor enmienda apply', () => {
-    const result = applyProtocoloRules(baseInput);
-
-    expect(result.pagoRevision).toBe(150);
-  });
-
-  it('forces pagoRevision to 0 when convenioId is set', () => {
-    const result = applyProtocoloRules({
-      ...baseInput,
-      convenioId: 'agreement-1',
-      pagoRevision: 150,
-    });
-
-    expect(result.pagoRevision).toBe(0);
-  });
-
-  it('forces pagoRevision to 0 when esEnmienda is true', () => {
-    const result = applyProtocoloRules({ ...baseInput, esEnmienda: true, pagoRevision: 150 });
-
-    expect(result.pagoRevision).toBe(0);
-  });
-
-  it('keeps pagoRevision when convenioId is null', () => {
-    const result = applyProtocoloRules({ ...baseInput, convenioId: null, pagoRevision: 150 });
-
-    expect(result.pagoRevision).toBe(150);
-  });
-
   it('throws ProtocoloRevisionHcIncompletaException when requiereRevisionHc is true and a field is missing', () => {
     expect(() =>
       applyProtocoloRules({
@@ -56,7 +36,7 @@ describe('applyProtocoloRules', () => {
         requiereRevisionHc: true,
         montoHc: null,
         tipoComprobanteHc: 'BOLETA',
-        nroComprobanteHc: '001',
+        nroComprobanteHc: 'B001-123',
       }),
     ).toThrow(ProtocoloRevisionHcIncompletaException);
   });
@@ -67,12 +47,12 @@ describe('applyProtocoloRules', () => {
       requiereRevisionHc: true,
       montoHc: 50,
       tipoComprobanteHc: 'BOLETA',
-      nroComprobanteHc: '001',
+      nroComprobanteHc: 'B001-123',
     });
 
     expect(result.montoHc).toBe(50);
     expect(result.tipoComprobanteHc).toBe('BOLETA');
-    expect(result.nroComprobanteHc).toBe('001');
+    expect(result.nroComprobanteHc).toBe('B001-123');
   });
 
   it('nulls HC fields when requiereRevisionHc is false even if values were passed', () => {
@@ -81,7 +61,7 @@ describe('applyProtocoloRules', () => {
       requiereRevisionHc: false,
       montoHc: 50,
       tipoComprobanteHc: 'BOLETA',
-      nroComprobanteHc: '001',
+      nroComprobanteHc: 'B001-123',
     });
 
     expect(result.montoHc).toBeNull();
@@ -170,5 +150,158 @@ describe('applyProtocoloRules', () => {
     expect(() =>
       applyProtocoloRules({ ...baseInput, esInstitucional: true, lugarEjecucion: 'HOSPITAL REGIONAL DE LORETO' }),
     ).not.toThrow();
+  });
+
+  describe('pago de revisión', () => {
+    it('keeps the payment when the protocol is not an amendment nor has an agreement', () => {
+      const result = applyProtocoloRules(baseInput);
+
+      expect(result.pagoRevision).toBe(150);
+      expect(result.tipoComprobante).toBe('BOLETA');
+      expect(result.comprobanteRevision).toBe('B001-123');
+    });
+
+    it('forces pagoRevision to 0 and nulls the receipt when convenioId is set', () => {
+      const result = applyProtocoloRules({ ...baseInput, convenioId: 'a1' });
+
+      expect(result.pagoRevision).toBe(0);
+      expect(result.tipoComprobante).toBeNull();
+      expect(result.comprobanteRevision).toBeNull();
+    });
+
+    it('forces pagoRevision to 0 and nulls the receipt when the protocol is an amendment', () => {
+      const result = applyProtocoloRules({ ...baseInput, esEnmienda: true });
+
+      expect(result.pagoRevision).toBe(0);
+      expect(result.tipoComprobante).toBeNull();
+      expect(result.comprobanteRevision).toBeNull();
+    });
+  });
+
+  describe('documentación ética', () => {
+    it('throws ProtocoloConstanciaEticaIncompletaException when tieneConstanciaEtica is true and the code is missing', () => {
+      expect(() =>
+        applyProtocoloRules({
+          ...baseInput,
+          tieneConstanciaEtica: true,
+          idConstanciaEtica: null,
+          fechaConstancia: new Date('2026-01-10'),
+        }),
+      ).toThrow(ProtocoloConstanciaEticaIncompletaException);
+    });
+
+    it('throws ProtocoloConstanciaEticaIncompletaException when tieneConstanciaEtica is true and the date is missing', () => {
+      expect(() =>
+        applyProtocoloRules({ ...baseInput, tieneConstanciaEtica: true, idConstanciaEtica: 'CE-1', fechaConstancia: null }),
+      ).toThrow(ProtocoloConstanciaEticaIncompletaException);
+    });
+
+    it('keeps the constancia code and date when they are complete', () => {
+      const fecha = new Date('2026-01-10');
+      const result = applyProtocoloRules({
+        ...baseInput,
+        tieneConstanciaEtica: true,
+        idConstanciaEtica: 'CE-1',
+        fechaConstancia: fecha,
+      });
+
+      expect(result.idConstanciaEtica).toBe('CE-1');
+      expect(result.fechaConstancia).toBe(fecha);
+    });
+
+    it('nulls the constancia code and date when tieneConstanciaEtica is false', () => {
+      const result = applyProtocoloRules({
+        ...baseInput,
+        tieneConstanciaEtica: false,
+        idConstanciaEtica: 'CE-1',
+        fechaConstancia: new Date('2026-01-10'),
+      });
+
+      expect(result.idConstanciaEtica).toBeNull();
+      expect(result.fechaConstancia).toBeNull();
+    });
+
+    it('resets the good practices certificate when the protocol does not require HC review', () => {
+      const result = applyProtocoloRules({ ...baseInput, certificadoBuenasPracticas: true });
+
+      expect(result.certificadoBuenasPracticas).toBe(false);
+    });
+
+    it('keeps the good practices certificate when the protocol requires HC review', () => {
+      const result = applyProtocoloRules({
+        ...baseInput,
+        requiereRevisionHc: true,
+        montoHc: 50,
+        tipoComprobanteHc: 'BOLETA',
+        nroComprobanteHc: 'B001-123',
+        certificadoBuenasPracticas: true,
+      });
+
+      expect(result.certificadoBuenasPracticas).toBe(true);
+    });
+  });
+
+  describe('formato de comprobantes (SUNAT)', () => {
+    it.each([
+      ['BOLETA', 'B001-1'],
+      ['BOLETA', 'B001-00001234'],
+      ['BOLETA', 'BA01-123'],
+      ['FACTURA', 'F001-00001234'],
+      ['FACTURA', 'FA01-9'],
+    ])('accepts %s %s as the payment receipt', (tipo, numero) => {
+      expect(() =>
+        applyProtocoloRules({ ...baseInput, tipoComprobante: tipo, comprobanteRevision: numero }),
+      ).not.toThrow();
+    });
+
+    it.each([
+      ['BOLETA', 'F001-123'],
+      ['FACTURA', 'B001-123'],
+      ['BOLETA', 'B01-123'],
+      ['BOLETA', 'B001123'],
+      ['BOLETA', 'B001-123456789'],
+      ['BOLETA', 'B001-ABC'],
+      ['OTRO', 'B001-123'],
+    ])('rejects %s %s as the payment receipt', (tipo, numero) => {
+      expect(() =>
+        applyProtocoloRules({ ...baseInput, tipoComprobante: tipo, comprobanteRevision: numero }),
+      ).toThrow(ProtocoloComprobanteInvalidoException);
+    });
+
+    it('rejects a receipt number without its type and vice versa', () => {
+      expect(() =>
+        applyProtocoloRules({ ...baseInput, tipoComprobante: null, comprobanteRevision: 'B001-123' }),
+      ).toThrow(ProtocoloComprobanteInvalidoException);
+      expect(() =>
+        applyProtocoloRules({ ...baseInput, tipoComprobante: 'BOLETA', comprobanteRevision: null }),
+      ).toThrow(ProtocoloComprobanteInvalidoException);
+    });
+
+    it('does not validate the payment receipt when the protocol is exonerated', () => {
+      expect(() =>
+        applyProtocoloRules({ ...baseInput, esEnmienda: true, tipoComprobante: 'BOLETA', comprobanteRevision: 'xx' }),
+      ).not.toThrow();
+    });
+
+    it('rejects an invalid HC receipt number', () => {
+      expect(() =>
+        applyProtocoloRules({
+          ...baseInput,
+          requiereRevisionHc: true,
+          montoHc: 50,
+          tipoComprobanteHc: 'FACTURA',
+          nroComprobanteHc: 'B001-123',
+        }),
+      ).toThrow(ProtocoloComprobanteInvalidoException);
+    });
+
+    it('skips the receipt format checks when checkComprobantes is false', () => {
+      expect(() =>
+        applyProtocoloRules(
+          { ...baseInput, tipoComprobante: 'BOLETA', comprobanteRevision: '123' },
+          { checkComprobantes: false },
+        ),
+      ).not.toThrow();
+    });
   });
 });
