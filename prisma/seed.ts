@@ -1,9 +1,10 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { LineType, PrismaClient } from '@prisma/client';
+import { InstitutionType, LineType, PrismaClient } from '@prisma/client';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
+// Facultades de ejemplo que se cargan para cada universidad de la semilla (cada universidad puede tener otras).
 const faculties: string[] = [
   'NO CORRESPONDE',
   'MEDICINA HUMANA',
@@ -13,22 +14,22 @@ const faculties: string[] = [
   'TECNOLOGO MEDICO',
 ];
 
-const institutions: { name: string; abbreviation: string; esUniversidad: boolean }[] = [
-  { name: 'UNIVERSIDAD NACIONAL DE LA AMAZONIA PERUANA', abbreviation: 'UNAP', esUniversidad: true },
-  { name: 'UNIVERSIDAD NACIONAL DE HUANCAVELICA', abbreviation: 'UNH', esUniversidad: true },
-  { name: 'UNIVERSIDAD NACIONAL MAYOR DE SAN MARCOS', abbreviation: 'UNMSM', esUniversidad: true },
-  { name: 'UNIVERSIDAD NACIONAL DE SAN MARTIN', abbreviation: 'UNSM', esUniversidad: true },
-  { name: 'UNIVERSIDAD SAN MARTIN DE PORRES', abbreviation: 'USMP', esUniversidad: true },
-  { name: 'HOSPITAL REGIONAL DE LORETO', abbreviation: 'HRL', esUniversidad: false },
-  { name: 'UNIVERSIDAD CONTINENTAL', abbreviation: 'UC', esUniversidad: true },
-  { name: 'NAMRU SOUTH', abbreviation: 'NS', esUniversidad: false },
-  { name: 'HOSPITAL APOYO IQUITOS', abbreviation: 'HAI', esUniversidad: false },
-  { name: 'UNIVERSIDAD CESAR VALLEJO', abbreviation: 'UCV', esUniversidad: true },
-  { name: 'UNIVERSIDAD PRIVADAD DEL NORTE', abbreviation: 'UPN', esUniversidad: true },
-  { name: 'UNIVERSIDAD PERUANA CAYETANO HEREDIA', abbreviation: 'UPCH', esUniversidad: true },
-  { name: 'ASOCIACION CIVIL SELVA AMAZONICA', abbreviation: 'ACSA', esUniversidad: false },
-  { name: 'UNIVERSIDAD CIENTIFICA DEL PERU', abbreviation: 'UCP', esUniversidad: true },
-  { name: 'INSTITUTO NACIONAL DE LA SALUD', abbreviation: 'INS', esUniversidad: false },
+const institutions: { name: string; abbreviation: string; type: InstitutionType }[] = [
+  { name: 'UNIVERSIDAD NACIONAL DE LA AMAZONIA PERUANA', abbreviation: 'UNAP', type: InstitutionType.UNIVERSITY },
+  { name: 'UNIVERSIDAD NACIONAL DE HUANCAVELICA', abbreviation: 'UNH', type: InstitutionType.UNIVERSITY },
+  { name: 'UNIVERSIDAD NACIONAL MAYOR DE SAN MARCOS', abbreviation: 'UNMSM', type: InstitutionType.UNIVERSITY },
+  { name: 'UNIVERSIDAD NACIONAL DE SAN MARTIN', abbreviation: 'UNSM', type: InstitutionType.UNIVERSITY },
+  { name: 'UNIVERSIDAD SAN MARTIN DE PORRES', abbreviation: 'USMP', type: InstitutionType.UNIVERSITY },
+  { name: 'HOSPITAL REGIONAL DE LORETO', abbreviation: 'HRL', type: InstitutionType.HOSPITAL },
+  { name: 'UNIVERSIDAD CONTINENTAL', abbreviation: 'UC', type: InstitutionType.UNIVERSITY },
+  { name: 'NAMRU SOUTH', abbreviation: 'NS', type: InstitutionType.OTHER },
+  { name: 'HOSPITAL APOYO IQUITOS', abbreviation: 'HAI', type: InstitutionType.HOSPITAL },
+  { name: 'UNIVERSIDAD CESAR VALLEJO', abbreviation: 'UCV', type: InstitutionType.UNIVERSITY },
+  { name: 'UNIVERSIDAD PRIVADAD DEL NORTE', abbreviation: 'UPN', type: InstitutionType.UNIVERSITY },
+  { name: 'UNIVERSIDAD PERUANA CAYETANO HEREDIA', abbreviation: 'UPCH', type: InstitutionType.UNIVERSITY },
+  { name: 'ASOCIACION CIVIL SELVA AMAZONICA', abbreviation: 'ACSA', type: InstitutionType.OTHER },
+  { name: 'UNIVERSIDAD CIENTIFICA DEL PERU', abbreviation: 'UCP', type: InstitutionType.UNIVERSITY },
+  { name: 'INSTITUTO NACIONAL DE LA SALUD', abbreviation: 'INS', type: InstitutionType.OTHER },
 ];
 
 // legacy dump has 2 duplicate descriptions (already de-duplicated here since
@@ -386,19 +387,27 @@ const researchers: { dni: string; firstName: string; lastName: string; email: st
   { dni: '90000012', firstName: 'DIANA CAROLINA', lastName: 'JIMENEZ LOPEZ', email: 'diana.jimenez@example.com', phone: '987654332' },
 ];
 
-async function seedFaculties(): Promise<void> {
-  for (const name of faculties) {
-    await prisma.faculty.upsert({ where: { name }, update: {}, create: { name } });
-  }
-}
-
 async function seedInstitutions(): Promise<void> {
   for (const institution of institutions) {
     await prisma.institution.upsert({
       where: { name: institution.name },
-      update: { abbreviation: institution.abbreviation, esUniversidad: institution.esUniversidad },
+      update: { abbreviation: institution.abbreviation, type: institution.type },
       create: institution,
     });
+  }
+}
+
+// Las facultades pertenecen a una universidad: se cargan después de las instituciones.
+async function seedFaculties(): Promise<void> {
+  const universities = await prisma.institution.findMany({ where: { type: InstitutionType.UNIVERSITY } });
+  for (const university of universities) {
+    for (const name of faculties) {
+      await prisma.faculty.upsert({
+        where: { institutionId_name: { institutionId: university.id, name } },
+        update: {},
+        create: { name, institutionId: university.id },
+      });
+    }
   }
 }
 
@@ -449,8 +458,8 @@ async function seedResearchers(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  await seedFaculties();
   await seedInstitutions();
+  await seedFaculties();
   await seedDestinations();
   await seedResearchLines();
   await seedModalities();

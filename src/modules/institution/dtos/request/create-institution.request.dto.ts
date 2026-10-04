@@ -1,5 +1,6 @@
-import { IsBoolean, IsOptional, IsString, Length } from 'class-validator';
+import { IsEnum, IsOptional, IsString, Length } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { InstitutionType } from '@prisma/client';
 import { UpperCase } from '../../../../common/decorators/upper-case.decorator';
 
 export class CreateInstitutionRequestDto {
@@ -16,8 +17,11 @@ export class CreateInstitutionRequestDto {
   @UpperCase()
   abbreviation?: string;
 
-  @ApiPropertyOptional({ description: '¿Es una universidad?', default: false })
-  @IsOptional()
-  @IsBoolean()
-  esUniversidad?: boolean;
+  @ApiProperty({
+    enum: InstitutionType,
+    description:
+      'Tipo de institución: HOSPITAL (hospital), UNIVERSITY (universidad, con facultades propias) u OTHER (otra)',
+  })
+  @IsEnum(InstitutionType)
+  type: InstitutionType;
 }

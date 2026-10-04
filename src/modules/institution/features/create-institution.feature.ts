@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Institution, Prisma } from '@prisma/client';
+import { Institution, InstitutionType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { getUniqueConstraintTarget } from '../../../common/utils/prisma-error.util';
 import { InstitutionNameAlreadyExistsException } from '../exceptions/institution-name-already-exists.exception';
@@ -7,7 +7,7 @@ import { InstitutionNameAlreadyExistsException } from '../exceptions/institution
 export type CreateInstitutionInput = {
   name: string;
   abbreviation: string | null;
-  esUniversidad: boolean;
+  type: InstitutionType;
 };
 
 @Injectable()

@@ -1,7 +1,8 @@
-import { IsBoolean, IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsEnum, IsOptional, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Committee, ReviewOutcome, RiskLevel } from '@prisma/client';
-import { UpperCase } from '../../../../common/decorators/upper-case.decorator';
+import { ProtocolReviewObservationRequestDto } from './protocol-review-observation.request.dto';
 
 export class CreateProtocolReviewRequestDto {
   @ApiProperty({
@@ -18,47 +19,22 @@ export class CreateProtocolReviewRequestDto {
   @IsEnum(ReviewOutcome)
   outcome: ReviewOutcome;
 
-  @ApiPropertyOptional({ description: 'Observaciones (obligatorias si el resultado es OBSERVED)' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(2000)
-  @UpperCase()
-  observations?: string;
-
-  @ApiPropertyOptional({ description: 'Indica si el CIEI emitió constancia ética (solo se usa en revisiones del CIEI)' })
-  @IsOptional()
-  @IsBoolean()
-  tieneConstanciaEtica?: boolean;
-
-  @ApiPropertyOptional({ description: 'Identificador de la constancia ética emitida (solo se usa en revisiones del CIEI)' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(100)
-  idConstanciaEtica?: string;
-
   @ApiPropertyOptional({
-    description: 'Fecha de emisión de la constancia ética en formato ISO (solo se usa en revisiones del CIEI)',
+    type: [ProtocolReviewObservationRequestDto],
+    description: 'Observaciones con su tipo (al menos una si el resultado es OBSERVED)',
   })
   @IsOptional()
-  @IsDateString()
-  fechaConstancia?: string;
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => ProtocolReviewObservationRequestDto)
+  observations?: ProtocolReviewObservationRequestDto[];
 
   @ApiPropertyOptional({
     enum: RiskLevel,
-    description: 'Nivel de riesgo catalogado (solo se usa en revisiones del CIEI)',
+    description: 'Nivel de riesgo catalogado (solo CIEI; obligatorio al finalizar)',
   })
   @IsOptional()
   @IsEnum(RiskLevel)
   catalogadoRiesgo?: RiskLevel;
-
-  @ApiPropertyOptional({ description: 'Indica si cuenta con consentimiento informado (solo se usa en revisiones del CIEI)' })
-  @IsOptional()
-  @IsBoolean()
-  consentimientoInformado?: boolean;
-
-  @ApiPropertyOptional({ description: 'Departamento al que se dirigió el permiso (solo se usa en revisiones del CIEI)' })
-  @IsOptional()
-  @IsString()
-  @MaxLength(200)
-  departamentoDirigidoPermiso?: string;
 }

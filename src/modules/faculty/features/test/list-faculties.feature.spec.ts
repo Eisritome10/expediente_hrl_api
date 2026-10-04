@@ -1,5 +1,6 @@
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { ListFacultiesFeature } from '../list-faculties.feature';
+import { FACULTY_INCLUDE } from '../../faculty.include';
 
 describe('ListFacultiesFeature', () => {
   const prisma = { faculty: { findMany: jest.fn(), count: jest.fn() } } as unknown as PrismaService;
@@ -18,10 +19,28 @@ describe('ListFacultiesFeature', () => {
 
     expect(result).toEqual({ data, page: 1, limit: 10, total: 2 });
     expect(prisma.faculty.findMany).toHaveBeenCalledWith({
+      where: {},
       skip: 0,
       take: 10,
       orderBy: { createdAt: 'desc' },
+      include: FACULTY_INCLUDE,
     });
+  });
+
+  it('filters by university and orders by name when institutionId is given', async () => {
+    (prisma.faculty.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.faculty.count as jest.Mock).mockResolvedValue(0);
+
+    await feature.execute(1, 50, { institutionId: 'i1' });
+
+    expect(prisma.faculty.findMany).toHaveBeenCalledWith({
+      where: { institutionId: 'i1' },
+      skip: 0,
+      take: 50,
+      orderBy: { name: 'asc' },
+      include: FACULTY_INCLUDE,
+    });
+    expect(prisma.faculty.count).toHaveBeenCalledWith({ where: { institutionId: 'i1' } });
   });
 
   it('defaults to page 1 / limit 10 when nothing is provided', async () => {

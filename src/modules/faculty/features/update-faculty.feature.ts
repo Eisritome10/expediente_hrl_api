@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { Faculty, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { getUniqueConstraintTarget } from '../../../common/utils/prisma-error.util';
 import { FacultyNameAlreadyExistsException } from '../exceptions/faculty-name-already-exists.exception';
+import { FACULTY_INCLUDE, FacultyWithInstitution } from '../faculty.include';
 import { FindFacultyByIdFeature } from './find-faculty-by-id.feature';
 
 export type UpdateFacultyInput = {
@@ -16,11 +17,11 @@ export class UpdateFacultyFeature {
     private readonly findFacultyByIdFeature: FindFacultyByIdFeature,
   ) {}
 
-  async execute(id: string, input: UpdateFacultyInput): Promise<Faculty> {
+  async execute(id: string, input: UpdateFacultyInput): Promise<FacultyWithInstitution> {
     await this.findFacultyByIdFeature.execute(id);
 
     try {
-      return await this.prisma.faculty.update({ where: { id }, data: input });
+      return await this.prisma.faculty.update({ where: { id }, data: input, include: FACULTY_INCLUDE });
     } catch (e) {
       if (
         e instanceof Prisma.PrismaClientKnownRequestError &&

@@ -4,7 +4,7 @@ import { DomainErrorCode } from '../../../common/enums/domain-error-code.enum';
 export class ProtocolReviewObservationsRequiredException extends DomainException {
   constructor() {
     super(
-      'observations is required when the review status is OBSERVED',
+      'An OBSERVED review requires at least one observation, and every observation needs a type and non-empty text',
       DomainErrorCode.PROTOCOL_REVIEW_OBSERVATIONS_REQUIRED,
     );
   }

@@ -1,4 +1,4 @@
-import { Committee, ProtocolStatus, ReviewOutcome, RiskLevel, UserStatus } from '@prisma/client';
+import { Committee, ObservationType, ProtocolStatus, ReviewOutcome, RiskLevel, UserStatus } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { CreateProtocolReviewFeature } from '../create-protocol-review.feature';
 import { ProtocolNotFoundException } from '../../../protocol/exceptions/protocol-not-found.exception';
@@ -6,6 +6,8 @@ import { ProtocolReviewCicApprovalRequiredException } from '../../exceptions/pro
 import { ProtocolReviewCommitteeClosedException } from '../../exceptions/protocol-review-committee-closed.exception';
 import { ProtocolReviewConcurrentUpdateException } from '../../exceptions/protocol-review-concurrent-update.exception';
 import { ProtocolReviewEthicsFieldsNotAllowedException } from '../../exceptions/protocol-review-ethics-fields-not-allowed.exception';
+import { ProtocolReviewFinalizationIncompleteException } from '../../exceptions/protocol-review-finalization-incomplete.exception';
+import { ProtocolReviewGoodPracticesCertificateRequiredException } from '../../exceptions/protocol-review-good-practices-certificate-required.exception';
 import { ProtocolReviewInvalidOutcomeForCommitteeException } from '../../exceptions/protocol-review-invalid-outcome-for-committee.exception';
 import { ProtocolReviewInvalidReviewerException } from '../../exceptions/protocol-review-invalid-reviewer.exception';
 import { ProtocolReviewObservationsRequiredException } from '../../exceptions/protocol-review-observations-required.exception';
@@ -29,17 +31,24 @@ describe('CreateProtocolReviewFeature', () => {
   const activeReviewer = { id: 'u1', status: UserStatus.ACTIVE };
   const someDate = new Date('2026-01-15T10:00:00.000Z');
 
+  const protocolWith = (overrides: Record<string, unknown> = {}) => ({
+    id: 'p1',
+    status: ProtocolStatus.CREATED,
+    updatedAt: someDate,
+    requiereRevisionHc: false,
+    tieneConstanciaEtica: true,
+    consentimientoInformado: true,
+    certificadoBuenasPracticas: false,
+    ...overrides,
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('creates a CIC review with outcome OBSERVED and observations', async () => {
+  it('creates a CIC OBSERVED review storing every typed observation, trimmed, and never touching the legacy column', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue({
-      id: 'p1',
-      status: ProtocolStatus.CREATED,
-      updatedAt: someDate,
-    });
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(protocolWith());
     (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue(null);
     (tx.protocol.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
     const created = { id: 'rev1' };
@@ -51,7 +60,10 @@ describe('CreateProtocolReviewFeature', () => {
         reviewerId: 'u1',
         committee: Committee.CIC,
         outcome: ReviewOutcome.OBSERVED,
-        observations: '  Falta certificado  ',
+        observations: [
+          { type: ObservationType.ADMINISTRATIVE, text: '  Falta la boleta  ' },
+          { type: ObservationType.METHODOLOGICAL, text: 'Objetivo ambiguo' },
+        ],
       }),
     ).resolves.toEqual(created);
 
@@ -66,68 +78,60 @@ describe('CreateProtocolReviewFeature', () => {
           reviewerId: 'u1',
           committee: Committee.CIC,
           outcome: ReviewOutcome.OBSERVED,
-          observations: 'Falta certificado',
+          observations: null,
+          observationItems: {
+            create: [
+              { type: ObservationType.ADMINISTRATIVE, text: 'Falta la boleta' },
+              { type: ObservationType.METHODOLOGICAL, text: 'Objetivo ambiguo' },
+            ],
+          },
         }),
       }),
     );
   });
 
-  it('creates a CIC review with outcome APPROVED without changing the protocol status', async () => {
+  it('creates a CIC APPROVED review without payment and without observations', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue({
-      id: 'p1',
-      status: ProtocolStatus.CIC_CORRECTED,
-      updatedAt: someDate,
-    });
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(
+      protocolWith({ status: ProtocolStatus.CIC_CORRECTED }),
+    );
     (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue(null);
     (tx.protocol.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
-    const created = { id: 'rev2' };
-    (tx.protocolReview.create as jest.Mock).mockResolvedValue(created);
+    (tx.protocolReview.create as jest.Mock).mockResolvedValue({ id: 'rev2' });
 
-    await expect(
-      feature.execute({
-        protocolId: 'p1',
-        reviewerId: 'u1',
-        committee: Committee.CIC,
-        outcome: ReviewOutcome.APPROVED,
-        observations: null,
-      }),
-    ).resolves.toEqual(created);
+    await feature.execute({
+      protocolId: 'p1',
+      reviewerId: 'u1',
+      committee: Committee.CIC,
+      outcome: ReviewOutcome.APPROVED,
+      observations: [],
+    });
 
     expect(tx.protocol.updateMany).toHaveBeenCalledWith({
       where: { id: 'p1', status: ProtocolStatus.CIC_CORRECTED, updatedAt: someDate },
       data: { status: ProtocolStatus.CIC_CORRECTED },
     });
-    expect(tx.protocolReview.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          committee: Committee.CIC,
-          outcome: ReviewOutcome.APPROVED,
-        }),
-      }),
-    );
+    const data = (tx.protocolReview.create as jest.Mock).mock.calls[0][0].data;
+    expect(data.observationItems).toEqual({ create: [] });
+    expect(data.pagoRevision).toBeUndefined();
   });
 
   it('creates a CIEI review with outcome OBSERVED after a CIC approval', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue({
-      id: 'p1',
-      status: ProtocolStatus.CIC_CORRECTED,
-      updatedAt: someDate,
-    });
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(
+      protocolWith({ status: ProtocolStatus.CIC_CORRECTED }),
+    );
     (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue({ outcome: ReviewOutcome.APPROVED });
     (tx.protocol.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
     (tx.protocolReview.create as jest.Mock).mockResolvedValue({ id: 'rev3' });
 
-    await expect(
-      feature.execute({
-        protocolId: 'p1',
-        reviewerId: 'u1',
-        committee: Committee.CIEI,
-        outcome: ReviewOutcome.OBSERVED,
-        observations: 'Ajustar el consentimiento',
-      }),
-    ).resolves.toEqual({ id: 'rev3' });
+    await feature.execute({
+      protocolId: 'p1',
+      reviewerId: 'u1',
+      committee: Committee.CIEI,
+      outcome: ReviewOutcome.OBSERVED,
+      observations: [{ type: ObservationType.ETHICS_CONSTANCE, text: 'Constancia mal redactada' }],
+    });
 
     expect(tx.protocol.updateMany).toHaveBeenCalledWith({
       where: { id: 'p1', status: ProtocolStatus.CIC_CORRECTED, updatedAt: someDate },
@@ -135,14 +139,15 @@ describe('CreateProtocolReviewFeature', () => {
     });
   });
 
-  it('creates a CIEI FINALIZED review merging the ethics fields into the protocol update', async () => {
-    const fechaConstancia = new Date('2026-02-01T00:00:00.000Z');
+  it('creates a CIEI FINALIZED review writing only the risk level into the protocol update', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue({
-      id: 'p1',
-      status: ProtocolStatus.CIEI_CORRECTED,
-      updatedAt: someDate,
-    });
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(
+      protocolWith({
+        status: ProtocolStatus.CIEI_CORRECTED,
+        requiereRevisionHc: true,
+        certificadoBuenasPracticas: true,
+      }),
+    );
     (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue({ outcome: ReviewOutcome.APPROVED });
     (tx.protocol.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
     const created = { id: 'rev4' };
@@ -154,34 +159,78 @@ describe('CreateProtocolReviewFeature', () => {
         reviewerId: 'u1',
         committee: Committee.CIEI,
         outcome: ReviewOutcome.FINALIZED,
-        observations: null,
-        tieneConstanciaEtica: true,
-        idConstanciaEtica: 'CE-1',
-        fechaConstancia,
+        observations: [],
         catalogadoRiesgo: RiskLevel.MODERATE_RISK,
-        consentimientoInformado: true,
       }),
     ).resolves.toEqual(created);
 
     expect(tx.protocol.updateMany).toHaveBeenCalledWith({
       where: { id: 'p1', status: ProtocolStatus.CIEI_CORRECTED, updatedAt: someDate },
-      data: {
-        status: ProtocolStatus.FINALIZED,
-        tieneConstanciaEtica: true,
-        idConstanciaEtica: 'CE-1',
-        fechaConstancia,
-        catalogadoRiesgo: RiskLevel.MODERATE_RISK,
-        consentimientoInformado: true,
-      },
+      data: { status: ProtocolStatus.FINALIZED, catalogadoRiesgo: RiskLevel.MODERATE_RISK },
     });
-    expect(tx.protocolReview.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          committee: Committee.CIEI,
-          outcome: ReviewOutcome.FINALIZED,
-        }),
+  });
+
+  it('throws ProtocolReviewFinalizationIncompleteException when CIEI finalizes without the risk level, without opening a transaction', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(
+      protocolWith({ status: ProtocolStatus.CIEI_CORRECTED }),
+    );
+    (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue({ outcome: ReviewOutcome.APPROVED });
+
+    await expect(
+      feature.execute({
+        protocolId: 'p1',
+        reviewerId: 'u1',
+        committee: Committee.CIEI,
+        outcome: ReviewOutcome.FINALIZED,
+        observations: [],
+      }),
+    ).rejects.toBeInstanceOf(ProtocolReviewFinalizationIncompleteException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('throws ProtocolReviewFinalizationIncompleteException when the protocol has no constancia or consent registered', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(
+      protocolWith({ status: ProtocolStatus.CIEI_CORRECTED, tieneConstanciaEtica: false }),
+    );
+    (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue({ outcome: ReviewOutcome.APPROVED });
+
+    await expect(
+      feature.execute({
+        protocolId: 'p1',
+        reviewerId: 'u1',
+        committee: Committee.CIEI,
+        outcome: ReviewOutcome.FINALIZED,
+        observations: [],
+        catalogadoRiesgo: RiskLevel.NO_RISK,
+      }),
+    ).rejects.toBeInstanceOf(ProtocolReviewFinalizationIncompleteException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('throws ProtocolReviewGoodPracticesCertificateRequiredException when CIEI finalizes a protocol with HC and no certificate registered', async () => {
+    (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(
+      protocolWith({
+        status: ProtocolStatus.CIEI_CORRECTED,
+        requiereRevisionHc: true,
+        certificadoBuenasPracticas: false,
       }),
     );
+    (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue({ outcome: ReviewOutcome.APPROVED });
+
+    await expect(
+      feature.execute({
+        protocolId: 'p1',
+        reviewerId: 'u1',
+        committee: Committee.CIEI,
+        outcome: ReviewOutcome.FINALIZED,
+        observations: [],
+        catalogadoRiesgo: RiskLevel.NO_RISK,
+      }),
+    ).rejects.toBeInstanceOf(ProtocolReviewGoodPracticesCertificateRequiredException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('throws ProtocolReviewInvalidReviewerException when the reviewer does not exist', async () => {
@@ -190,13 +239,13 @@ describe('CreateProtocolReviewFeature', () => {
     await expect(
       feature.execute({
         protocolId: 'p1',
-        reviewerId: 'missing',
+        reviewerId: 'ghost',
         committee: Committee.CIC,
         outcome: ReviewOutcome.APPROVED,
-        observations: null,
+        observations: [],
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewInvalidReviewerException);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    expect(prisma.protocol.findUnique).not.toHaveBeenCalled();
   });
 
   it('throws ProtocolReviewInvalidReviewerException when the reviewer is inactive', async () => {
@@ -208,10 +257,9 @@ describe('CreateProtocolReviewFeature', () => {
         reviewerId: 'u1',
         committee: Committee.CIC,
         outcome: ReviewOutcome.APPROVED,
-        observations: null,
+        observations: [],
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewInvalidReviewerException);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('throws ProtocolNotFoundException when the protocol does not exist', async () => {
@@ -224,45 +272,51 @@ describe('CreateProtocolReviewFeature', () => {
         reviewerId: 'u1',
         committee: Committee.CIC,
         outcome: ReviewOutcome.APPROVED,
-        observations: null,
+        observations: [],
       }),
     ).rejects.toBeInstanceOf(ProtocolNotFoundException);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('throws ProtocolReviewProtocolAlreadyFinalizedException when the protocol is already FINALIZED, without opening a transaction', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue({
-      id: 'p1',
-      status: ProtocolStatus.FINALIZED,
-      updatedAt: someDate,
-    });
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(protocolWith({ status: ProtocolStatus.FINALIZED }));
 
     await expect(
       feature.execute({
         protocolId: 'p1',
         reviewerId: 'u1',
-        committee: Committee.CIC,
-        outcome: ReviewOutcome.APPROVED,
-        observations: null,
+        committee: Committee.CIEI,
+        outcome: ReviewOutcome.OBSERVED,
+        observations: [{ type: ObservationType.METHODOLOGICAL, text: 'Algo' }],
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewProtocolAlreadyFinalizedException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('throws ProtocolReviewObservationsRequiredException when OBSERVED has blank observations, before any prisma call', async () => {
+  it('throws ProtocolReviewObservationsRequiredException when OBSERVED has no observations, before any prisma call', async () => {
     await expect(
       feature.execute({
         protocolId: 'p1',
         reviewerId: 'u1',
         committee: Committee.CIC,
         outcome: ReviewOutcome.OBSERVED,
-        observations: '   ',
+        observations: [],
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewObservationsRequiredException);
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
-    expect(prisma.protocol.findUnique).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('throws ProtocolReviewObservationsRequiredException when an observation has blank text after trimming', async () => {
+    await expect(
+      feature.execute({
+        protocolId: 'p1',
+        reviewerId: 'u1',
+        committee: Committee.CIC,
+        outcome: ReviewOutcome.OBSERVED,
+        observations: [{ type: ObservationType.ADMINISTRATIVE, text: '   ' }],
+      }),
+    ).rejects.toBeInstanceOf(ProtocolReviewObservationsRequiredException);
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
 
   it('throws ProtocolReviewInvalidOutcomeForCommitteeException when CIC is given FINALIZED, before any prisma call', async () => {
@@ -272,35 +326,29 @@ describe('CreateProtocolReviewFeature', () => {
         reviewerId: 'u1',
         committee: Committee.CIC,
         outcome: ReviewOutcome.FINALIZED,
-        observations: null,
+        observations: [],
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewInvalidOutcomeForCommitteeException);
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('throws ProtocolReviewEthicsFieldsNotAllowedException when CIC sends ethics fields, before any prisma call', async () => {
+  it('throws ProtocolReviewEthicsFieldsNotAllowedException when CIC sends the risk level, before any prisma call', async () => {
     await expect(
       feature.execute({
         protocolId: 'p1',
         reviewerId: 'u1',
         committee: Committee.CIC,
         outcome: ReviewOutcome.APPROVED,
-        observations: null,
-        tieneConstanciaEtica: true,
+        observations: [],
+        catalogadoRiesgo: RiskLevel.HIGH_RISK,
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewEthicsFieldsNotAllowedException);
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
-    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('throws ProtocolReviewCommitteeClosedException when CIC reviews a protocol already at CIEI, without opening a transaction', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue({
-      id: 'p1',
-      status: ProtocolStatus.CIEI_OBSERVED,
-      updatedAt: someDate,
-    });
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(protocolWith({ status: ProtocolStatus.CIEI_OBSERVED }));
     (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue(null);
 
     await expect(
@@ -309,7 +357,7 @@ describe('CreateProtocolReviewFeature', () => {
         reviewerId: 'u1',
         committee: Committee.CIC,
         outcome: ReviewOutcome.APPROVED,
-        observations: null,
+        observations: [],
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewCommitteeClosedException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -317,11 +365,7 @@ describe('CreateProtocolReviewFeature', () => {
 
   it('throws ProtocolReviewCicApprovalRequiredException when CIEI reviews without a prior CIC approval, without opening a transaction', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue({
-      id: 'p1',
-      status: ProtocolStatus.CREATED,
-      updatedAt: someDate,
-    });
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(protocolWith());
     (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue(null);
 
     await expect(
@@ -330,7 +374,7 @@ describe('CreateProtocolReviewFeature', () => {
         reviewerId: 'u1',
         committee: Committee.CIEI,
         outcome: ReviewOutcome.OBSERVED,
-        observations: 'Observación de CIEI',
+        observations: [{ type: ObservationType.INFORMED_CONSENT, text: 'Observación de CIEI' }],
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewCicApprovalRequiredException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -338,11 +382,7 @@ describe('CreateProtocolReviewFeature', () => {
 
   it('throws ProtocolReviewConcurrentUpdateException on a concurrent race, without creating the review', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue({
-      id: 'p1',
-      status: ProtocolStatus.CREATED,
-      updatedAt: someDate,
-    });
+    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(protocolWith());
     (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue(null);
     (tx.protocol.updateMany as jest.Mock).mockResolvedValue({ count: 0 });
 
@@ -352,7 +392,7 @@ describe('CreateProtocolReviewFeature', () => {
         reviewerId: 'u1',
         committee: Committee.CIC,
         outcome: ReviewOutcome.OBSERVED,
-        observations: 'Algo cambió',
+        observations: [{ type: ObservationType.LEGAL_INSTITUTIONAL, text: 'Algo cambió' }],
       }),
     ).rejects.toBeInstanceOf(ProtocolReviewConcurrentUpdateException);
     expect(tx.protocolReview.create).not.toHaveBeenCalled();

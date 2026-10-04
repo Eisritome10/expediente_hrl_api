@@ -10,7 +10,7 @@ import { ProtocolNotObservedException } from '../exceptions/protocol-not-observe
 import { FindProtocolByIdFeature } from './find-protocol-by-id.feature';
 import { CreateProtocolInput } from './create-protocol.feature';
 
-export type UpdateProtocolInput = Partial<CreateProtocolInput>;
+export type UpdateProtocolInput = Partial<Omit<CreateProtocolInput, 'protocoloOriginalId'>>;
 
 @Injectable()
 export class UpdateProtocolFeature {
@@ -32,7 +32,17 @@ export class UpdateProtocolFeature {
     }
 
     const merged = this.toEffectiveInput(current, patch);
-    const rules = applyProtocoloRules(merged);
+    // Las enmiendas históricas pueden no tener original: se conserva el esEnmienda del registro actual.
+    const touchesComprobantes =
+      patch.tipoComprobante !== undefined ||
+      patch.comprobanteRevision !== undefined ||
+      patch.tipoComprobanteHc !== undefined ||
+      patch.nroComprobanteHc !== undefined ||
+      patch.requiereRevisionHc !== undefined;
+    const rules = applyProtocoloRules(
+      { ...merged, esEnmienda: current.esEnmienda },
+      { checkComprobantes: touchesComprobantes },
+    );
     await validateProtocolReferences(this.prisma, merged);
 
     const data: Prisma.ProtocolUpdateInput = {
@@ -48,17 +58,19 @@ export class UpdateProtocolFeature {
       lineaHrl: { connect: { id: merged.lineaHrlId } },
       lineaMeta2030: { connect: { id: merged.lineaMeta2030Id } },
       modalidad: { connect: { id: merged.modalidadId } },
-      propositoRevision: merged.propositoRevision,
-      fechaRevision: merged.fechaRevision,
-      tipoComprobante: merged.tipoComprobante,
-      comprobanteRevision: merged.comprobanteRevision,
       pagoRevision: rules.pagoRevision,
-      esEnmienda: merged.esEnmienda,
+      tipoComprobante: rules.tipoComprobante,
+      comprobanteRevision: rules.comprobanteRevision,
       requiereRevisionHc: merged.requiereRevisionHc,
       montoHc: rules.montoHc,
       tipoComprobanteHc: rules.tipoComprobanteHc,
       nroComprobanteHc: rules.nroComprobanteHc,
-      certificadoBuenasPracticas: merged.certificadoBuenasPracticas,
+      tieneConstanciaEtica: merged.tieneConstanciaEtica,
+      idConstanciaEtica: rules.idConstanciaEtica,
+      fechaConstancia: rules.fechaConstancia,
+      consentimientoInformado: merged.consentimientoInformado,
+      departamentoDirigidoPermiso: merged.departamentoDirigidoPermiso,
+      certificadoBuenasPracticas: rules.certificadoBuenasPracticas,
     };
 
     if (patch.coinvestigadorIds !== undefined) {
@@ -130,18 +142,32 @@ export class UpdateProtocolFeature {
       lineaHrlId: patch.lineaHrlId !== undefined ? patch.lineaHrlId : current.lineaHrlId,
       lineaMeta2030Id: patch.lineaMeta2030Id !== undefined ? patch.lineaMeta2030Id : current.lineaMeta2030Id,
       modalidadId: patch.modalidadId !== undefined ? patch.modalidadId : current.modalidadId,
-      propositoRevision: patch.propositoRevision !== undefined ? patch.propositoRevision : current.propositoRevision,
-      fechaRevision: patch.fechaRevision !== undefined ? patch.fechaRevision : current.fechaRevision,
-      tipoComprobante: patch.tipoComprobante !== undefined ? patch.tipoComprobante : current.tipoComprobante,
-      comprobanteRevision:
-        patch.comprobanteRevision !== undefined ? patch.comprobanteRevision : current.comprobanteRevision,
+      // Si el protocolo estaba exonerado, su 0 no es un pago real: al quitar el convenio o la enmienda el pago
+      // queda sin registrar hasta que se corrija, en lugar de arrastrar un 0 engañoso.
       pagoRevision:
         patch.pagoRevision !== undefined
           ? patch.pagoRevision
-          : current.pagoRevision !== null
+          : current.pagoRevision !== null && !current.esEnmienda && current.convenioId === null
             ? Number(current.pagoRevision)
             : null,
-      esEnmienda: patch.esEnmienda !== undefined ? patch.esEnmienda : current.esEnmienda,
+      tipoComprobante: patch.tipoComprobante !== undefined ? patch.tipoComprobante : current.tipoComprobante,
+      comprobanteRevision:
+        patch.comprobanteRevision !== undefined ? patch.comprobanteRevision : current.comprobanteRevision,
+      tieneConstanciaEtica:
+        patch.tieneConstanciaEtica !== undefined ? patch.tieneConstanciaEtica : current.tieneConstanciaEtica,
+      idConstanciaEtica: patch.idConstanciaEtica !== undefined ? patch.idConstanciaEtica : current.idConstanciaEtica,
+      fechaConstancia: patch.fechaConstancia !== undefined ? patch.fechaConstancia : current.fechaConstancia,
+      consentimientoInformado:
+        patch.consentimientoInformado !== undefined ? patch.consentimientoInformado : current.consentimientoInformado,
+      departamentoDirigidoPermiso:
+        patch.departamentoDirigidoPermiso !== undefined
+          ? patch.departamentoDirigidoPermiso
+          : current.departamentoDirigidoPermiso,
+      certificadoBuenasPracticas:
+        patch.certificadoBuenasPracticas !== undefined
+          ? patch.certificadoBuenasPracticas
+          : current.certificadoBuenasPracticas,
+      protocoloOriginalId: current.protocoloOriginalId,
       requiereRevisionHc: patch.requiereRevisionHc !== undefined ? patch.requiereRevisionHc : current.requiereRevisionHc,
       montoHc:
         patch.montoHc !== undefined
@@ -151,10 +177,6 @@ export class UpdateProtocolFeature {
             : null,
       tipoComprobanteHc: patch.tipoComprobanteHc !== undefined ? patch.tipoComprobanteHc : current.tipoComprobanteHc,
       nroComprobanteHc: patch.nroComprobanteHc !== undefined ? patch.nroComprobanteHc : current.nroComprobanteHc,
-      certificadoBuenasPracticas:
-        patch.certificadoBuenasPracticas !== undefined
-          ? patch.certificadoBuenasPracticas
-          : current.certificadoBuenasPracticas,
     };
   }
 }

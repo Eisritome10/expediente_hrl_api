@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { InstitutionType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
 import { CreateInstitutionFeature } from '../create-institution.feature';
 import { InstitutionNameAlreadyExistsException } from '../../exceptions/institution-name-already-exists.exception';
@@ -10,7 +10,7 @@ describe('CreateInstitutionFeature', () => {
   const input = {
     name: 'Hospital Regional de Loreto',
     abbreviation: 'HRL',
-    esUniversidad: false,
+    type: InstitutionType.HOSPITAL,
   };
 
   beforeEach(() => {

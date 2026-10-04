@@ -1,6 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
 import { Committee, ReviewOutcome } from '@prisma/client';
 import { ProtocolReviewWithRelations } from '../../protocol-review.include';
+import { ProtocolReviewObservationResponseDto } from './protocol-review-observation.response.dto';
 
 export class ProtocolReviewReviewerResponseDto {
   @ApiProperty() readonly id: string;
@@ -23,7 +24,8 @@ export class ProtocolReviewResponseDto {
   @ApiProperty() readonly protocolId: string;
   @ApiProperty({ enum: Committee }) readonly committee: Committee;
   @ApiProperty({ enum: ReviewOutcome }) readonly outcome: ReviewOutcome;
-  @ApiPropertyOptional({ nullable: true }) readonly observations: string | null;
+  @ApiProperty({ type: [ProtocolReviewObservationResponseDto] })
+  readonly observations: ProtocolReviewObservationResponseDto[];
   @ApiProperty({ type: ProtocolReviewReviewerResponseDto }) readonly reviewer: ProtocolReviewReviewerResponseDto;
   @ApiProperty() readonly createdAt: Date;
   @ApiProperty() readonly updatedAt: Date;
@@ -33,7 +35,7 @@ export class ProtocolReviewResponseDto {
     protocolId: string,
     committee: Committee,
     outcome: ReviewOutcome,
-    observations: string | null,
+    observations: ProtocolReviewObservationResponseDto[],
     reviewer: ProtocolReviewReviewerResponseDto,
     createdAt: Date,
     updatedAt: Date,
@@ -54,7 +56,7 @@ export class ProtocolReviewResponseDto {
       review.protocolId,
       review.committee,
       review.outcome,
-      review.observations,
+      ProtocolReviewObservationResponseDto.listFrom(review.observationItems, review.observations),
       ProtocolReviewReviewerResponseDto.of(review.reviewer.id, review.reviewer.username, review.reviewer.fullName),
       review.createdAt,
       review.updatedAt,

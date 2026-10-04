@@ -12,6 +12,17 @@ export type ListResearcherProtocolsResult = {
   total: number;
 };
 
+// "Sus protocolos": donde participa como investigador principal, coinvestigador o asesor.
+export function researcherParticipationWhere(researcherId: string): Prisma.ProtocolWhereInput {
+  return {
+    OR: [
+      { investigadorPrincipalId: researcherId },
+      { coinvestigadores: { some: { researcherId } } },
+      { asesores: { some: { researcherId } } },
+    ],
+  };
+}
+
 @Injectable()
 export class ListResearcherProtocolsFeature {
   constructor(private readonly prisma: PrismaService) {}
@@ -23,14 +34,7 @@ export class ListResearcherProtocolsFeature {
     const researcherId = user.researcherId;
     const { skip, take } = resolvePagination(page, limit);
 
-    // "Sus protocolos": donde participa como investigador principal, coinvestigador o asesor.
-    const where: Prisma.ProtocolWhereInput = {
-      OR: [
-        { investigadorPrincipalId: researcherId },
-        { coinvestigadores: { some: { researcherId } } },
-        { asesores: { some: { researcherId } } },
-      ],
-    };
+    const where = researcherParticipationWhere(researcherId);
 
     const [data, total] = await Promise.all([
       this.prisma.protocol.findMany({

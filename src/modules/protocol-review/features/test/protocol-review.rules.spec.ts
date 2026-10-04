@@ -1,5 +1,6 @@
-import { Committee, ProtocolStatus, ReviewOutcome, RiskLevel } from '@prisma/client';
+import { Committee, ObservationType, ProtocolStatus, ReviewOutcome, RiskLevel } from '@prisma/client';
 import {
+  assertCieiFinalizationRequirements,
   assertReviewRequest,
   resolveEthicsUpdate,
   resolveNextProtocolStatus,
@@ -7,132 +8,171 @@ import {
 import { ProtocolReviewInvalidOutcomeForCommitteeException } from '../../exceptions/protocol-review-invalid-outcome-for-committee.exception';
 import { ProtocolReviewObservationsRequiredException } from '../../exceptions/protocol-review-observations-required.exception';
 import { ProtocolReviewEthicsFieldsNotAllowedException } from '../../exceptions/protocol-review-ethics-fields-not-allowed.exception';
-import { ProtocolReviewConstanciaIncompleteException } from '../../exceptions/protocol-review-constancia-incomplete.exception';
 import { ProtocolReviewFinalizationIncompleteException } from '../../exceptions/protocol-review-finalization-incomplete.exception';
 import { ProtocolReviewCommitteeClosedException } from '../../exceptions/protocol-review-committee-closed.exception';
 import { ProtocolReviewCicApprovalRequiredException } from '../../exceptions/protocol-review-cic-approval-required.exception';
 import { ProtocolReviewObservationPendingException } from '../../exceptions/protocol-review-observation-pending.exception';
+import { ProtocolReviewGoodPracticesCertificateRequiredException } from '../../exceptions/protocol-review-good-practices-certificate-required.exception';
+
+const oneObservation = [{ type: ObservationType.ADMINISTRATIVE, text: 'Falta la boleta de pago' }];
 
 describe('assertReviewRequest', () => {
-  it('does not throw for a valid CIC OBSERVED review with observations', () => {
+  it('does not throw for a valid CIC OBSERVED review with a typed observation', () => {
+    expect(() =>
+      assertReviewRequest({ committee: Committee.CIC, outcome: ReviewOutcome.OBSERVED, observations: oneObservation }),
+    ).not.toThrow();
+  });
+
+  it('does not throw for a CIC OBSERVED review with several observations of different types', () => {
     expect(() =>
       assertReviewRequest({
         committee: Committee.CIC,
         outcome: ReviewOutcome.OBSERVED,
-        observations: 'Falta el certificado',
+        observations: [
+          { type: ObservationType.METHODOLOGICAL, text: 'Objetivo general ambiguo' },
+          { type: ObservationType.INFORMED_CONSENT, text: 'Consentimiento mal redactado' },
+        ],
       }),
     ).not.toThrow();
   });
 
   it('does not throw for a valid CIC APPROVED review without observations', () => {
     expect(() =>
-      assertReviewRequest({
-        committee: Committee.CIC,
-        outcome: ReviewOutcome.APPROVED,
-      }),
+      assertReviewRequest({ committee: Committee.CIC, outcome: ReviewOutcome.APPROVED, observations: [] }),
     ).not.toThrow();
   });
 
-  it('does not throw for a valid CIEI OBSERVED review with observations', () => {
+  it('does not throw for a valid CIEI OBSERVED review with an ETHICS_CONSTANCE observation', () => {
     expect(() =>
       assertReviewRequest({
         committee: Committee.CIEI,
         outcome: ReviewOutcome.OBSERVED,
-        observations: 'Ajustar el consentimiento',
+        observations: [{ type: ObservationType.ETHICS_CONSTANCE, text: 'La constancia tiene errores de redaccion' }],
       }),
     ).not.toThrow();
   });
 
-  it('does not throw for a valid CIEI FINALIZED review with all required ethics fields', () => {
+  it('does not throw for a CIEI FINALIZED review that sets the risk level', () => {
     expect(() =>
       assertReviewRequest({
         committee: Committee.CIEI,
         outcome: ReviewOutcome.FINALIZED,
-        tieneConstanciaEtica: true,
-        idConstanciaEtica: 'constancia-1',
-        fechaConstancia: new Date('2026-01-01'),
+        observations: [],
         catalogadoRiesgo: RiskLevel.MINIMAL_RISK,
-        consentimientoInformado: true,
       }),
     ).not.toThrow();
   });
 
   it('throws ProtocolReviewInvalidOutcomeForCommitteeException for a CIC FINALIZED outcome', () => {
     expect(() =>
-      assertReviewRequest({
-        committee: Committee.CIC,
-        outcome: ReviewOutcome.FINALIZED,
-      }),
+      assertReviewRequest({ committee: Committee.CIC, outcome: ReviewOutcome.FINALIZED, observations: [] }),
     ).toThrow(ProtocolReviewInvalidOutcomeForCommitteeException);
   });
 
   it('throws ProtocolReviewInvalidOutcomeForCommitteeException for a CIEI APPROVED outcome', () => {
     expect(() =>
-      assertReviewRequest({
-        committee: Committee.CIEI,
-        outcome: ReviewOutcome.APPROVED,
-      }),
+      assertReviewRequest({ committee: Committee.CIEI, outcome: ReviewOutcome.APPROVED, observations: [] }),
     ).toThrow(ProtocolReviewInvalidOutcomeForCommitteeException);
   });
 
   it('throws ProtocolReviewObservationsRequiredException for OBSERVED without observations', () => {
     expect(() =>
+      assertReviewRequest({ committee: Committee.CIC, outcome: ReviewOutcome.OBSERVED, observations: [] }),
+    ).toThrow(ProtocolReviewObservationsRequiredException);
+  });
+
+  it('throws ProtocolReviewObservationsRequiredException when an observation has blank text, whatever the outcome', () => {
+    expect(() =>
       assertReviewRequest({
         committee: Committee.CIC,
-        outcome: ReviewOutcome.OBSERVED,
-        observations: '   ',
+        outcome: ReviewOutcome.APPROVED,
+        observations: [{ type: ObservationType.LEGAL_INSTITUTIONAL, text: '   ' }],
       }),
     ).toThrow(ProtocolReviewObservationsRequiredException);
   });
 
-  it('throws ProtocolReviewEthicsFieldsNotAllowedException when a CIC review sends an ethics field', () => {
+  it('throws ProtocolReviewEthicsFieldsNotAllowedException when a CIC review sets the risk level', () => {
     expect(() =>
       assertReviewRequest({
         committee: Committee.CIC,
-        outcome: ReviewOutcome.APPROVED,
-        tieneConstanciaEtica: true,
+        outcome: ReviewOutcome.OBSERVED,
+        observations: oneObservation,
+        catalogadoRiesgo: RiskLevel.HIGH_RISK,
       }),
     ).toThrow(ProtocolReviewEthicsFieldsNotAllowedException);
   });
 
-  it('allows a CIC review when ethics fields are null or undefined', () => {
+  it('allows a CIC review when the risk level is null or undefined', () => {
     expect(() =>
       assertReviewRequest({
         committee: Committee.CIC,
-        outcome: ReviewOutcome.APPROVED,
-        tieneConstanciaEtica: undefined,
-        idConstanciaEtica: null,
-        fechaConstancia: null,
+        outcome: ReviewOutcome.OBSERVED,
+        observations: oneObservation,
         catalogadoRiesgo: null,
-        consentimientoInformado: undefined,
-        departamentoDirigidoPermiso: null,
       }),
     ).not.toThrow();
   });
+});
 
-  it('throws ProtocolReviewConstanciaIncompleteException when tieneConstanciaEtica is true but idConstanciaEtica is missing', () => {
-    expect(() =>
-      assertReviewRequest({
-        committee: Committee.CIEI,
-        outcome: ReviewOutcome.OBSERVED,
-        observations: 'Observacion',
-        tieneConstanciaEtica: true,
-        fechaConstancia: new Date('2026-01-01'),
-      }),
-    ).toThrow(ProtocolReviewConstanciaIncompleteException);
+describe('assertCieiFinalizationRequirements', () => {
+  const completeProtocol = {
+    tieneConstanciaEtica: true,
+    consentimientoInformado: true,
+    requiereRevisionHc: false,
+    certificadoBuenasPracticas: false,
+  };
+
+  const finalize = (overrides: Partial<Parameters<typeof assertCieiFinalizationRequirements>[0]> = {}) =>
+    assertCieiFinalizationRequirements({
+      committee: Committee.CIEI,
+      outcome: ReviewOutcome.FINALIZED,
+      catalogadoRiesgo: RiskLevel.MINIMAL_RISK,
+      protocol: completeProtocol,
+      ...overrides,
+    });
+
+  it('does not throw when the risk level is set and the documentation is registered', () => {
+    expect(() => finalize()).not.toThrow();
   });
 
-  it('throws ProtocolReviewFinalizationIncompleteException when a CIEI FINALIZED review misses catalogadoRiesgo', () => {
+  it('throws ProtocolReviewFinalizationIncompleteException when the risk level is missing', () => {
+    expect(() => finalize({ catalogadoRiesgo: undefined })).toThrow(ProtocolReviewFinalizationIncompleteException);
+  });
+
+  it('throws ProtocolReviewFinalizationIncompleteException when the protocol has no constancia registered', () => {
+    expect(() => finalize({ protocol: { ...completeProtocol, tieneConstanciaEtica: false } })).toThrow(
+      ProtocolReviewFinalizationIncompleteException,
+    );
+  });
+
+  it('throws ProtocolReviewFinalizationIncompleteException when the protocol has no informed consent registered', () => {
+    expect(() => finalize({ protocol: { ...completeProtocol, consentimientoInformado: false } })).toThrow(
+      ProtocolReviewFinalizationIncompleteException,
+    );
+  });
+
+  it('throws ProtocolReviewGoodPracticesCertificateRequiredException when HC is required and the certificate is missing', () => {
     expect(() =>
-      assertReviewRequest({
-        committee: Committee.CIEI,
-        outcome: ReviewOutcome.FINALIZED,
-        tieneConstanciaEtica: true,
-        idConstanciaEtica: 'constancia-1',
-        fechaConstancia: new Date('2026-01-01'),
-        consentimientoInformado: true,
-      }),
-    ).toThrow(ProtocolReviewFinalizationIncompleteException);
+      finalize({ protocol: { ...completeProtocol, requiereRevisionHc: true, certificadoBuenasPracticas: false } }),
+    ).toThrow(ProtocolReviewGoodPracticesCertificateRequiredException);
+  });
+
+  it('does not throw when HC is required and the certificate is registered', () => {
+    expect(() =>
+      finalize({ protocol: { ...completeProtocol, requiereRevisionHc: true, certificadoBuenasPracticas: true } }),
+    ).not.toThrow();
+  });
+
+  it('does not require the certificate when the protocol does not need HC review', () => {
+    expect(() => finalize({ protocol: { ...completeProtocol, certificadoBuenasPracticas: false } })).not.toThrow();
+  });
+
+  it('does not apply to CIEI OBSERVED nor to CIC reviews', () => {
+    const incomplete = { ...completeProtocol, tieneConstanciaEtica: false };
+    expect(() => finalize({ outcome: ReviewOutcome.OBSERVED, catalogadoRiesgo: undefined, protocol: incomplete })).not.toThrow();
+    expect(() =>
+      finalize({ committee: Committee.CIC, outcome: ReviewOutcome.APPROVED, catalogadoRiesgo: undefined, protocol: incomplete }),
+    ).not.toThrow();
   });
 });
 
@@ -248,38 +288,16 @@ describe('resolveNextProtocolStatus', () => {
 
 describe('resolveEthicsUpdate', () => {
   it('always returns an empty object for CIC', () => {
-    expect(
-      resolveEthicsUpdate(Committee.CIC, {
-        tieneConstanciaEtica: true,
-        idConstanciaEtica: 'constancia-1',
-      }),
-    ).toEqual({});
+    expect(resolveEthicsUpdate(Committee.CIC, { catalogadoRiesgo: RiskLevel.HIGH_RISK })).toEqual({});
   });
 
-  it('returns only the defined ethics keys that were sent for CIEI', () => {
-    const fecha = new Date('2026-01-01');
-    expect(
-      resolveEthicsUpdate(Committee.CIEI, {
-        tieneConstanciaEtica: true,
-        idConstanciaEtica: 'constancia-1',
-        fechaConstancia: fecha,
-      }),
-    ).toEqual({
-      tieneConstanciaEtica: true,
-      idConstanciaEtica: 'constancia-1',
-      fechaConstancia: fecha,
+  it('returns only the risk level for CIEI', () => {
+    expect(resolveEthicsUpdate(Committee.CIEI, { catalogadoRiesgo: RiskLevel.MODERATE_RISK })).toEqual({
+      catalogadoRiesgo: RiskLevel.MODERATE_RISK,
     });
   });
 
-  it('nulls out idConstanciaEtica and fechaConstancia when tieneConstanciaEtica is false for CIEI', () => {
-    expect(
-      resolveEthicsUpdate(Committee.CIEI, {
-        tieneConstanciaEtica: false,
-      }),
-    ).toEqual({
-      tieneConstanciaEtica: false,
-      idConstanciaEtica: null,
-      fechaConstancia: null,
-    });
+  it('returns an empty object for CIEI when no risk level was sent', () => {
+    expect(resolveEthicsUpdate(Committee.CIEI, {})).toEqual({});
   });
 });
