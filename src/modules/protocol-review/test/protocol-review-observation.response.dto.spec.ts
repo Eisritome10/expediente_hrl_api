@@ -42,6 +42,7 @@ describe('ResearcherProtocolDetailResponseDto.from', () => {
     investigadorPrincipal: { id: 'r1', dni: '12345678', firstName: 'ROSA', lastName: 'PINEDO' },
     esEnmienda: false,
     protocoloOriginal: null,
+    corrections: [{ id: 'c1', comment: 'Corregido fuera del sistema', createdAt }],
     reviews: [
       {
         id: 'v2',
@@ -71,6 +72,7 @@ describe('ResearcherProtocolDetailResponseDto.from', () => {
       { type: ObservationType.INFORMED_CONSENT, text: 'Consentimiento mal redactado' },
     ]);
     expect(dto.reviews[1].observations).toEqual([{ type: null, text: 'TEXTO VIEJO' }]);
+    expect(dto.corrections).toEqual([{ id: 'c1', comment: 'Corregido fuera del sistema', createdAt }]);
     expect(Object.keys(dto.reviews[0])).not.toContain('reviewer');
     expect(Object.keys(dto)).not.toContain('pagoRevision');
   });

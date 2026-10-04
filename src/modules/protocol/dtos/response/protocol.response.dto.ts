@@ -39,6 +39,22 @@ class ProtocolRelatedEntityResponseDto {
   }
 }
 
+export class ProtocolCorrectionResponseDto {
+  @ApiProperty() readonly id: string;
+  @ApiProperty() readonly comment: string;
+  @ApiProperty() readonly createdAt: Date;
+
+  private constructor(id: string, comment: string, createdAt: Date) {
+    this.id = id;
+    this.comment = comment;
+    this.createdAt = createdAt;
+  }
+
+  static of(id: string, comment: string, createdAt: Date): ProtocolCorrectionResponseDto {
+    return new ProtocolCorrectionResponseDto(id, comment, createdAt);
+  }
+}
+
 class ProtocolOriginalResponseDto {
   @ApiProperty() readonly id: string;
   @ApiProperty() readonly nroExpediente: string;
@@ -138,6 +154,9 @@ export class ProtocolResponseDto {
   @ApiProperty() readonly consentimientoInformado: boolean;
   @ApiPropertyOptional({ nullable: true }) readonly departamentoDirigidoPermiso: string | null;
 
+  @ApiProperty({ type: [ProtocolCorrectionResponseDto], description: 'Comentarios de corrección, del más reciente al más antiguo' })
+  readonly corrections: ProtocolCorrectionResponseDto[];
+
   @ApiProperty() readonly createdAt: Date;
   @ApiProperty() readonly updatedAt: Date;
 
@@ -180,6 +199,7 @@ export class ProtocolResponseDto {
     catalogadoRiesgo: RiskLevel | null,
     consentimientoInformado: boolean,
     departamentoDirigidoPermiso: string | null,
+    corrections: ProtocolCorrectionResponseDto[],
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -221,6 +241,7 @@ export class ProtocolResponseDto {
     this.catalogadoRiesgo = catalogadoRiesgo;
     this.consentimientoInformado = consentimientoInformado;
     this.departamentoDirigidoPermiso = departamentoDirigidoPermiso;
+    this.corrections = corrections;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -267,6 +288,9 @@ export class ProtocolResponseDto {
       protocol.catalogadoRiesgo,
       protocol.consentimientoInformado,
       protocol.departamentoDirigidoPermiso,
+      protocol.corrections.map((correction) =>
+        ProtocolCorrectionResponseDto.of(correction.id, correction.comment, correction.createdAt),
+      ),
       protocol.createdAt,
       protocol.updatedAt,
     );

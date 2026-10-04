@@ -10,7 +10,10 @@ import { ProtocolNotObservedException } from '../exceptions/protocol-not-observe
 import { FindProtocolByIdFeature } from './find-protocol-by-id.feature';
 import { CreateProtocolInput } from './create-protocol.feature';
 
-export type UpdateProtocolInput = Partial<Omit<CreateProtocolInput, 'protocoloOriginalId'>>;
+export type UpdateProtocolInput = Partial<Omit<CreateProtocolInput, 'protocoloOriginalId'>> & {
+  /** Comentario de la corrección (historial); opcional. */
+  correctionComment?: string;
+};
 
 @Injectable()
 export class UpdateProtocolFeature {
@@ -100,6 +103,10 @@ export class UpdateProtocolFeature {
         });
 
         if (count === 0) throw new ProtocolNotObservedException(id);
+
+        if (patch.correctionComment) {
+          await tx.protocolCorrection.create({ data: { protocolId: id, comment: patch.correctionComment } });
+        }
 
         return tx.protocol.update({ where: { id }, data, include: PROTOCOL_INCLUDE });
       });

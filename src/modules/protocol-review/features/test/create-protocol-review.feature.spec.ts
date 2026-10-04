@@ -7,7 +7,6 @@ import { ProtocolReviewCommitteeClosedException } from '../../exceptions/protoco
 import { ProtocolReviewConcurrentUpdateException } from '../../exceptions/protocol-review-concurrent-update.exception';
 import { ProtocolReviewEthicsFieldsNotAllowedException } from '../../exceptions/protocol-review-ethics-fields-not-allowed.exception';
 import { ProtocolReviewFinalizationIncompleteException } from '../../exceptions/protocol-review-finalization-incomplete.exception';
-import { ProtocolReviewGoodPracticesCertificateRequiredException } from '../../exceptions/protocol-review-good-practices-certificate-required.exception';
 import { ProtocolReviewInvalidOutcomeForCommitteeException } from '../../exceptions/protocol-review-invalid-outcome-for-committee.exception';
 import { ProtocolReviewInvalidReviewerException } from '../../exceptions/protocol-review-invalid-reviewer.exception';
 import { ProtocolReviewObservationsRequiredException } from '../../exceptions/protocol-review-observations-required.exception';
@@ -189,48 +188,34 @@ describe('CreateProtocolReviewFeature', () => {
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
-  it('throws ProtocolReviewFinalizationIncompleteException when the protocol has no constancia or consent registered', async () => {
-    (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
-    (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(
-      protocolWith({ status: ProtocolStatus.CIEI_CORRECTED, tieneConstanciaEtica: false }),
-    );
-    (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue({ outcome: ReviewOutcome.APPROVED });
-
-    await expect(
-      feature.execute({
-        protocolId: 'p1',
-        reviewerId: 'u1',
-        committee: Committee.CIEI,
-        outcome: ReviewOutcome.FINALIZED,
-        observations: [],
-        catalogadoRiesgo: RiskLevel.NO_RISK,
-      }),
-    ).rejects.toBeInstanceOf(ProtocolReviewFinalizationIncompleteException);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
-  });
-
-  it('throws ProtocolReviewGoodPracticesCertificateRequiredException when CIEI finalizes a protocol with HC and no certificate registered', async () => {
+  it('lets the CIEI finalize a protocol that has no constancia, consent nor good practices certificate registered', async () => {
     (prisma.user.findUnique as jest.Mock).mockResolvedValue(activeReviewer);
     (prisma.protocol.findUnique as jest.Mock).mockResolvedValue(
       protocolWith({
         status: ProtocolStatus.CIEI_CORRECTED,
         requiereRevisionHc: true,
+        tieneConstanciaEtica: false,
+        consentimientoInformado: false,
         certificadoBuenasPracticas: false,
       }),
     );
     (prisma.protocolReview.findFirst as jest.Mock).mockResolvedValue({ outcome: ReviewOutcome.APPROVED });
+    (tx.protocol.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
+    (tx.protocolReview.create as jest.Mock).mockResolvedValue({ id: 'rev5' });
 
-    await expect(
-      feature.execute({
-        protocolId: 'p1',
-        reviewerId: 'u1',
-        committee: Committee.CIEI,
-        outcome: ReviewOutcome.FINALIZED,
-        observations: [],
-        catalogadoRiesgo: RiskLevel.NO_RISK,
-      }),
-    ).rejects.toBeInstanceOf(ProtocolReviewGoodPracticesCertificateRequiredException);
-    expect(prisma.$transaction).not.toHaveBeenCalled();
+    await feature.execute({
+      protocolId: 'p1',
+      reviewerId: 'u1',
+      committee: Committee.CIEI,
+      outcome: ReviewOutcome.FINALIZED,
+      observations: [],
+      catalogadoRiesgo: RiskLevel.NO_RISK,
+    });
+
+    expect(tx.protocol.updateMany).toHaveBeenCalledWith({
+      where: { id: 'p1', status: ProtocolStatus.CIEI_CORRECTED, updatedAt: someDate },
+      data: { status: ProtocolStatus.FINALIZED, catalogadoRiesgo: RiskLevel.NO_RISK },
+    });
   });
 
   it('throws ProtocolReviewInvalidReviewerException when the reviewer does not exist', async () => {

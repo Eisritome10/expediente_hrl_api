@@ -12,7 +12,6 @@ import { ProtocolReviewFinalizationIncompleteException } from '../../exceptions/
 import { ProtocolReviewCommitteeClosedException } from '../../exceptions/protocol-review-committee-closed.exception';
 import { ProtocolReviewCicApprovalRequiredException } from '../../exceptions/protocol-review-cic-approval-required.exception';
 import { ProtocolReviewObservationPendingException } from '../../exceptions/protocol-review-observation-pending.exception';
-import { ProtocolReviewGoodPracticesCertificateRequiredException } from '../../exceptions/protocol-review-good-practices-certificate-required.exception';
 
 const oneObservation = [{ type: ObservationType.ADMINISTRATIVE, text: 'Falta la boleta de pago' }];
 
@@ -32,6 +31,16 @@ describe('assertReviewRequest', () => {
           { type: ObservationType.METHODOLOGICAL, text: 'Objetivo general ambiguo' },
           { type: ObservationType.INFORMED_CONSENT, text: 'Consentimiento mal redactado' },
         ],
+      }),
+    ).not.toThrow();
+  });
+
+  it('accepts the OTHER observation type', () => {
+    expect(() =>
+      assertReviewRequest({
+        committee: Committee.CIC,
+        outcome: ReviewOutcome.OBSERVED,
+        observations: [{ type: ObservationType.OTHER, text: 'Ajuste menor del formato' }],
       }),
     ).not.toThrow();
   });
@@ -115,63 +124,27 @@ describe('assertReviewRequest', () => {
 });
 
 describe('assertCieiFinalizationRequirements', () => {
-  const completeProtocol = {
-    tieneConstanciaEtica: true,
-    consentimientoInformado: true,
-    requiereRevisionHc: false,
-    certificadoBuenasPracticas: false,
-  };
-
   const finalize = (overrides: Partial<Parameters<typeof assertCieiFinalizationRequirements>[0]> = {}) =>
     assertCieiFinalizationRequirements({
       committee: Committee.CIEI,
       outcome: ReviewOutcome.FINALIZED,
       catalogadoRiesgo: RiskLevel.MINIMAL_RISK,
-      protocol: completeProtocol,
       ...overrides,
     });
 
-  it('does not throw when the risk level is set and the documentation is registered', () => {
+  it('does not throw when the CIEI sets the risk level', () => {
     expect(() => finalize()).not.toThrow();
   });
 
   it('throws ProtocolReviewFinalizationIncompleteException when the risk level is missing', () => {
     expect(() => finalize({ catalogadoRiesgo: undefined })).toThrow(ProtocolReviewFinalizationIncompleteException);
-  });
-
-  it('throws ProtocolReviewFinalizationIncompleteException when the protocol has no constancia registered', () => {
-    expect(() => finalize({ protocol: { ...completeProtocol, tieneConstanciaEtica: false } })).toThrow(
-      ProtocolReviewFinalizationIncompleteException,
-    );
-  });
-
-  it('throws ProtocolReviewFinalizationIncompleteException when the protocol has no informed consent registered', () => {
-    expect(() => finalize({ protocol: { ...completeProtocol, consentimientoInformado: false } })).toThrow(
-      ProtocolReviewFinalizationIncompleteException,
-    );
-  });
-
-  it('throws ProtocolReviewGoodPracticesCertificateRequiredException when HC is required and the certificate is missing', () => {
-    expect(() =>
-      finalize({ protocol: { ...completeProtocol, requiereRevisionHc: true, certificadoBuenasPracticas: false } }),
-    ).toThrow(ProtocolReviewGoodPracticesCertificateRequiredException);
-  });
-
-  it('does not throw when HC is required and the certificate is registered', () => {
-    expect(() =>
-      finalize({ protocol: { ...completeProtocol, requiereRevisionHc: true, certificadoBuenasPracticas: true } }),
-    ).not.toThrow();
-  });
-
-  it('does not require the certificate when the protocol does not need HC review', () => {
-    expect(() => finalize({ protocol: { ...completeProtocol, certificadoBuenasPracticas: false } })).not.toThrow();
+    expect(() => finalize({ catalogadoRiesgo: null })).toThrow(ProtocolReviewFinalizationIncompleteException);
   });
 
   it('does not apply to CIEI OBSERVED nor to CIC reviews', () => {
-    const incomplete = { ...completeProtocol, tieneConstanciaEtica: false };
-    expect(() => finalize({ outcome: ReviewOutcome.OBSERVED, catalogadoRiesgo: undefined, protocol: incomplete })).not.toThrow();
+    expect(() => finalize({ outcome: ReviewOutcome.OBSERVED, catalogadoRiesgo: undefined })).not.toThrow();
     expect(() =>
-      finalize({ committee: Committee.CIC, outcome: ReviewOutcome.APPROVED, catalogadoRiesgo: undefined, protocol: incomplete }),
+      finalize({ committee: Committee.CIC, outcome: ReviewOutcome.APPROVED, catalogadoRiesgo: undefined }),
     ).not.toThrow();
   });
 });

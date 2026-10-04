@@ -255,11 +255,29 @@ model Protocol {
   destinos         ProtocolDestino[]
   disenosEstudio   ProtocolStudyDesign[]
   reviews          ProtocolReview[]
+  corrections      ProtocolCorrection[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@map("protocols")
+}
+
+// Comentario que acompaña una corrección (PATCH): sirve cuando el cambio se hizo fuera del sistema o no se puede
+// hacer aquí. Es un historial inmutable, como los dictámenes.
+model ProtocolCorrection {
+  id String @id @default(uuid())
+
+  protocolId String
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Restrict)
+
+  comment String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([protocolId])
+  @@map("protocol_corrections")
 }
 
 model ProtocolReview {
@@ -289,6 +307,7 @@ enum ObservationType {
   ADMINISTRATIVE
   METHODOLOGICAL
   LEGAL_INSTITUTIONAL
+  OTHER
 }
 
 model ProtocolReviewObservation {

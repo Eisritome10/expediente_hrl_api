@@ -59,7 +59,6 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.PROTOCOL_REVIEW_CIC_APPROVAL_REQUIRED]: HttpStatus.CONFLICT,
     [DomainErrorCode.PROTOCOL_REVIEW_OBSERVATION_PENDING]: HttpStatus.CONFLICT,
     [DomainErrorCode.PROTOCOL_REVIEW_CONCURRENT_UPDATE]: HttpStatus.CONFLICT,
-    [DomainErrorCode.PROTOCOL_REVIEW_GOOD_PRACTICES_CERTIFICATE_REQUIRED]: HttpStatus.BAD_REQUEST,
   };
 
   catch(exception: DomainException, host: ArgumentsHost) {

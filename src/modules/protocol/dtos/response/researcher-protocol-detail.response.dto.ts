@@ -1,7 +1,7 @@
 import { Committee, ProtocolStatus, ReviewOutcome } from '@prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ResearcherProtocolDetail } from '../../protocol.include';
-import { ProtocolRelatedResearcherResponseDto } from './protocol.response.dto';
+import { ProtocolCorrectionResponseDto, ProtocolRelatedResearcherResponseDto } from './protocol.response.dto';
 import { ProtocolReviewObservationResponseDto } from '../../../protocol-review/dtos/response/protocol-review-observation.response.dto';
 
 class ResearcherProtocolOriginalResponseDto {
@@ -73,6 +73,9 @@ export class ResearcherProtocolDetailResponseDto {
   @ApiProperty({ type: ResearcherProtocolReviewResponseDto, isArray: true })
   readonly reviews: ResearcherProtocolReviewResponseDto[];
 
+  @ApiProperty({ type: ProtocolCorrectionResponseDto, isArray: true })
+  readonly corrections: ProtocolCorrectionResponseDto[];
+
   @ApiProperty() readonly createdAt: Date;
   @ApiProperty() readonly updatedAt: Date;
 
@@ -86,6 +89,7 @@ export class ResearcherProtocolDetailResponseDto {
     esEnmienda: boolean,
     protocoloOriginal: ResearcherProtocolOriginalResponseDto | null,
     reviews: ResearcherProtocolReviewResponseDto[],
+    corrections: ProtocolCorrectionResponseDto[],
     createdAt: Date,
     updatedAt: Date,
   ) {
@@ -98,6 +102,7 @@ export class ResearcherProtocolDetailResponseDto {
     this.esEnmienda = esEnmienda;
     this.protocoloOriginal = protocoloOriginal;
     this.reviews = reviews;
+    this.corrections = corrections;
     this.createdAt = createdAt;
     this.updatedAt = updatedAt;
   }
@@ -125,6 +130,9 @@ export class ResearcherProtocolDetailResponseDto {
           ProtocolReviewObservationResponseDto.listFrom(review.observationItems, review.observations),
           review.createdAt,
         ),
+      ),
+      protocol.corrections.map((correction) =>
+        ProtocolCorrectionResponseDto.of(correction.id, correction.comment, correction.createdAt),
       ),
       protocol.createdAt,
       protocol.updatedAt,

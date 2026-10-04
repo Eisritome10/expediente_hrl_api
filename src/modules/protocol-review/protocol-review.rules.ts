@@ -6,7 +6,6 @@ import { ProtocolReviewFinalizationIncompleteException } from './exceptions/prot
 import { ProtocolReviewCommitteeClosedException } from './exceptions/protocol-review-committee-closed.exception';
 import { ProtocolReviewCicApprovalRequiredException } from './exceptions/protocol-review-cic-approval-required.exception';
 import { ProtocolReviewObservationPendingException } from './exceptions/protocol-review-observation-pending.exception';
-import { ProtocolReviewGoodPracticesCertificateRequiredException } from './exceptions/protocol-review-good-practices-certificate-required.exception';
 
 export interface ReviewObservationInput {
   type: ObservationType;
@@ -33,13 +32,6 @@ export interface AssertCieiFinalizationInput {
   committee: Committee;
   outcome: ReviewOutcome;
   catalogadoRiesgo?: RiskLevel | null;
-  /** Documentación registrada en el protocolo al crearlo. */
-  protocol: {
-    tieneConstanciaEtica: boolean;
-    consentimientoInformado: boolean;
-    requiereRevisionHc: boolean;
-    certificadoBuenasPracticas: boolean;
-  };
 }
 
 const CIC_ALLOWED_OUTCOMES: ReviewOutcome[] = [ReviewOutcome.OBSERVED, ReviewOutcome.APPROVED];
@@ -66,23 +58,15 @@ export function assertReviewRequest(input: AssertReviewRequestInput): void {
   }
 }
 
-// La documentación ética (constancia, consentimiento, certificado) se registra al crear el protocolo;
-// el CIEI solo puede finalizar si ya está registrada y si él mismo fija el nivel de riesgo.
+// El CIEI evalúa la documentación registrada al crear el protocolo (constancia, consentimiento, certificado), pero
+// su falta no impide finalizar: lo único que el CIEI debe fijar para finalizar es el nivel de riesgo.
 export function assertCieiFinalizationRequirements(input: AssertCieiFinalizationInput): void {
   if (input.committee !== Committee.CIEI || input.outcome !== ReviewOutcome.FINALIZED) {
     return;
   }
 
-  if (
-    !input.catalogadoRiesgo ||
-    !input.protocol.tieneConstanciaEtica ||
-    !input.protocol.consentimientoInformado
-  ) {
+  if (!input.catalogadoRiesgo) {
     throw new ProtocolReviewFinalizationIncompleteException();
-  }
-
-  if (input.protocol.requiereRevisionHc && !input.protocol.certificadoBuenasPracticas) {
-    throw new ProtocolReviewGoodPracticesCertificateRequiredException();
   }
 }
 

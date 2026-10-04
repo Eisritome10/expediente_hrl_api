@@ -13,6 +13,7 @@ export const PROTOCOL_INCLUDE = {
   asesores: { include: { researcher: true } },
   destinos: { include: { destination: true } },
   disenosEstudio: { include: { studyDesign: true } },
+  corrections: { orderBy: { createdAt: 'desc' }, select: { id: true, comment: true, createdAt: true } },
 } satisfies Prisma.ProtocolInclude;
 
 export type ProtocolWithRelations = Prisma.ProtocolGetPayload<{ include: typeof PROTOCOL_INCLUDE }>;
@@ -21,6 +22,7 @@ export type ProtocolWithRelations = Prisma.ProtocolGetPayload<{ include: typeof 
 export const RESEARCHER_PROTOCOL_DETAIL_INCLUDE = {
   investigadorPrincipal: true,
   protocoloOriginal: { select: { id: true, nroExpediente: true } },
+  corrections: { orderBy: { createdAt: 'desc' }, select: { id: true, comment: true, createdAt: true } },
   reviews: {
     orderBy: { createdAt: 'desc' },
     select: {
