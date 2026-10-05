@@ -68,6 +68,7 @@ describe('FindResearcherProtocolByIdFeature', () => {
       investigadorPrincipal: { id: 'r1', dni: '12345678', firstName: 'ROSA', lastName: 'PINEDO' },
       esEnmienda: false,
       protocoloOriginal: null,
+      corrections: [],
       reviews: [
         {
           id: 'v1',

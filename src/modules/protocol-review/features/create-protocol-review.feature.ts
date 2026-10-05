@@ -47,10 +47,6 @@ export class CreateProtocolReviewFeature {
         id: true,
         status: true,
         updatedAt: true,
-        requiereRevisionHc: true,
-        tieneConstanciaEtica: true,
-        consentimientoInformado: true,
-        certificadoBuenasPracticas: true,
       },
     });
     if (!protocol) throw new ProtocolNotFoundException(input.protocolId);
@@ -76,7 +72,6 @@ export class CreateProtocolReviewFeature {
       committee: input.committee,
       outcome: input.outcome,
       catalogadoRiesgo: input.catalogadoRiesgo,
-      protocol,
     });
 
     const ethicsUpdate = resolveEthicsUpdate(input.committee, input);

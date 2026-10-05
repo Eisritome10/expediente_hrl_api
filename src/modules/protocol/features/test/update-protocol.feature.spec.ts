@@ -15,6 +15,7 @@ import { ProtocoloComprobanteInvalidoException } from '../../exceptions/protocol
 describe('UpdateProtocolFeature', () => {
   const tx = {
     protocol: { updateMany: jest.fn(), update: jest.fn() },
+    protocolCorrection: { create: jest.fn() },
   };
 
   const prisma = {
@@ -257,6 +258,41 @@ describe('UpdateProtocolFeature', () => {
       feature.execute('p1', { tipoComprobante: 'BOLETA', comprobanteRevision: 'F001-9' }),
     ).rejects.toBeInstanceOf(ProtocoloComprobanteInvalidoException);
     expect(tx.protocol.update).not.toHaveBeenCalled();
+  });
+
+  it('stores the correction comment as history in the same transaction when one is given', async () => {
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { correctionComment: 'Se corrigió el consentimiento en el documento físico' });
+
+    expect(tx.protocolCorrection.create).toHaveBeenCalledWith({
+      data: { protocolId: 'p1', comment: 'Se corrigió el consentimiento en el documento físico' },
+    });
+    // El comentario no es un campo del protocolo.
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.correctionComment).toBeUndefined();
+  });
+
+  it('accepts a correction with only a comment and still moves the protocol to the corrected status', async () => {
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { correctionComment: 'Corregido fuera del sistema' });
+
+    expect(tx.protocol.updateMany).toHaveBeenCalledWith({
+      where: { id: 'p1', status: ProtocolStatus.CIC_OBSERVED },
+      data: { status: ProtocolStatus.CIC_CORRECTED },
+    });
+  });
+
+  it('does not create a correction record when there is no comment', async () => {
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { titulo: 'OTRO TITULO' });
+
+    expect(tx.protocolCorrection.create).not.toHaveBeenCalled();
   });
 
   it('never writes review purpose, review date, risk level, amendment or original protocol', async () => {

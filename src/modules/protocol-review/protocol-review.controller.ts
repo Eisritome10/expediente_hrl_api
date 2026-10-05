@@ -39,7 +39,7 @@ export class ProtocolReviewController {
   @ApiNotFoundResponse({ description: 'El protocolo no existe' })
   @ApiBadRequestResponse({
     description:
-      'Outcome invalido para el comite, observaciones faltantes o sin texto, riesgo en un dictamen CIC, o finalizacion sin nivel de riesgo, sin constancia/consentimiento registrados o sin certificado de buenas practicas cuando el protocolo requiere historia clinica',
+      'Outcome invalido para el comite, observaciones faltantes o sin texto, riesgo en un dictamen CIC, o finalizacion sin nivel de riesgo',
   })
   @ApiConflictResponse({
     description:

@@ -166,6 +166,7 @@ export class ProtocolController {
 
   private toUpdateInput(dto: UpdateProtocolRequestDto): UpdateProtocolInput {
     return {
+      correctionComment: dto.correctionComment?.trim() || undefined,
       nroExpediente: dto.nroExpediente,
       fechaRecepcion: dto.fechaRecepcion !== undefined ? new Date(dto.fechaRecepcion) : undefined,
       titulo: dto.titulo,
