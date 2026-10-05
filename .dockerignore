@@ -1,0 +1,15 @@
+node_modules
+dist
+.git
+.idea
+.agents
+.claude
+.windsurf
+.backups
+graphify-out
+coverage
+.env*
+!.env.example
+*.tsbuildinfo
+compose.yml
+Dockerfile
