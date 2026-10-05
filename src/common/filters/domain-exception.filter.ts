@@ -14,6 +14,7 @@ export class DomainExceptionFilter implements ExceptionFilter {
     [DomainErrorCode.FACULTY_NOT_FOUND]: HttpStatus.NOT_FOUND,
     [DomainErrorCode.FACULTY_NAME_ALREADY_EXISTS]: HttpStatus.CONFLICT,
     [DomainErrorCode.FACULTY_INSTITUTION_NOT_UNIVERSITY]: HttpStatus.BAD_REQUEST,
+    [DomainErrorCode.FACULTY_IN_USE_BY_PROTOCOL]: HttpStatus.CONFLICT,
     [DomainErrorCode.INSTITUTION_HAS_FACULTIES]: HttpStatus.CONFLICT,
     [DomainErrorCode.PROTOCOLO_FACULTAD_NO_PERTENECE_INSTITUCION]: HttpStatus.BAD_REQUEST,
     [DomainErrorCode.DESTINATION_NOT_FOUND]: HttpStatus.NOT_FOUND,

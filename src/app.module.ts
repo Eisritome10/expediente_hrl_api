@@ -4,7 +4,6 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ResearcherModule } from './modules/researcher/researcher.module';
 import { UserModule } from './modules/user/user.module';
 import { InstitutionModule } from './modules/institution/institution.module';
-import { FacultyModule } from './modules/faculty/faculty.module';
 import { DestinationModule } from './modules/destination/destination.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { SeederModule } from './seeder/seeder.module';
@@ -24,7 +23,6 @@ import { ProtocolReviewModule } from './modules/protocol-review/protocol-review.
     ResearcherModule,
     UserModule,
     InstitutionModule,
-    FacultyModule,
     DestinationModule,
     ResearchLineModule,
     ModalityModule,

@@ -1,17 +1,16 @@
 import { InstitutionType, Prisma } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
-import { CreateFacultyFeature } from '../create-faculty.feature';
+import { CreateInstitutionFacultyFeature } from '../create-institution-faculty.feature';
 import { FacultyNameAlreadyExistsException } from '../../exceptions/faculty-name-already-exists.exception';
 import { FacultyInstitutionNotUniversityException } from '../../exceptions/faculty-institution-not-university.exception';
-import { InstitutionNotFoundException } from '../../../institution/exceptions/institution-not-found.exception';
-import { FACULTY_INCLUDE } from '../../faculty.include';
+import { InstitutionNotFoundException } from '../../exceptions/institution-not-found.exception';
 
-describe('CreateFacultyFeature', () => {
+describe('CreateInstitutionFacultyFeature', () => {
   const prisma = {
     institution: { findUnique: jest.fn() },
     faculty: { create: jest.fn() },
   } as unknown as PrismaService;
-  const feature = new CreateFacultyFeature(prisma);
+  const feature = new CreateInstitutionFacultyFeature(prisma);
 
   const input = { name: 'Facultad de Medicina Humana', institutionId: 'i1' };
 
@@ -25,7 +24,7 @@ describe('CreateFacultyFeature', () => {
     (prisma.faculty.create as jest.Mock).mockResolvedValue(created);
 
     await expect(feature.execute(input)).resolves.toEqual(created);
-    expect(prisma.faculty.create).toHaveBeenCalledWith({ data: input, include: FACULTY_INCLUDE });
+    expect(prisma.faculty.create).toHaveBeenCalledWith({ data: input });
   });
 
   it('throws InstitutionNotFoundException when the institution does not exist', async () => {

@@ -1,5 +1,6 @@
 import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Query } from '@nestjs/common';
 import {
+  ApiBadRequestResponse,
   ApiBearerAuth,
   ApiConflictResponse,
   ApiCreatedResponse,
@@ -18,10 +19,15 @@ import { ListInstitutionsFeature } from './features/list-institutions.feature';
 import { FindInstitutionByIdFeature } from './features/find-institution-by-id.feature';
 import { UpdateInstitutionFeature } from './features/update-institution.feature';
 import { DeleteInstitutionFeature } from './features/delete-institution.feature';
+import { ListInstitutionFacultiesFeature } from './features/list-institution-faculties.feature';
+import { CreateInstitutionFacultyFeature } from './features/create-institution-faculty.feature';
+import { DeleteInstitutionFacultyFeature } from './features/delete-institution-faculty.feature';
 import { CreateInstitutionRequestDto } from './dtos/request/create-institution.request.dto';
 import { UpdateInstitutionRequestDto } from './dtos/request/update-institution.request.dto';
 import { ListInstitutionsQueryDto } from './dtos/request/list-institutions.query.dto';
+import { CreateInstitutionFacultyRequestDto } from './dtos/request/create-institution-faculty.request.dto';
 import { InstitutionResponseDto } from './dtos/response/institution.response.dto';
+import { InstitutionFacultyResponseDto } from './dtos/response/institution-faculty.response.dto';
 import { PaginatedResultResponseDto } from '../../common/dtos/response/paginated-result.response.dto';
 
 @ApiTags('institutions')
@@ -35,6 +41,9 @@ export class InstitutionController {
     private readonly findInstitutionByIdFeature: FindInstitutionByIdFeature,
     private readonly updateInstitutionFeature: UpdateInstitutionFeature,
     private readonly deleteInstitutionFeature: DeleteInstitutionFeature,
+    private readonly listInstitutionFacultiesFeature: ListInstitutionFacultiesFeature,
+    private readonly createInstitutionFacultyFeature: CreateInstitutionFacultyFeature,
+    private readonly deleteInstitutionFacultyFeature: DeleteInstitutionFacultyFeature,
   ) {}
 
   @Post()
@@ -95,5 +104,44 @@ export class InstitutionController {
   @ApiNotFoundResponse({ description: 'La institución no existe' })
   async remove(@Param('id') id: string): Promise<void> {
     await this.deleteInstitutionFeature.execute(id);
+  }
+
+  @Get(':id/faculties')
+  @ApiOperation({ summary: 'Listar las facultades de una universidad' })
+  @ApiParam({ name: 'id', description: 'Id de la institución' })
+  @ApiOkResponse({ type: InstitutionFacultyResponseDto, isArray: true })
+  @ApiNotFoundResponse({ description: 'La institución no existe' })
+  async listFaculties(@Param('id') id: string): Promise<InstitutionFacultyResponseDto[]> {
+    const faculties = await this.listInstitutionFacultiesFeature.execute(id);
+
+    return faculties.map(InstitutionFacultyResponseDto.from);
+  }
+
+  @Post(':id/faculties')
+  @ApiOperation({ summary: 'Agregar una facultad a una universidad' })
+  @ApiParam({ name: 'id', description: 'Id de la universidad' })
+  @ApiCreatedResponse({ type: InstitutionFacultyResponseDto })
+  @ApiNotFoundResponse({ description: 'La institución no existe' })
+  @ApiBadRequestResponse({ description: 'La institución no es una universidad' })
+  @ApiConflictResponse({ description: 'La universidad ya tiene una facultad con ese nombre' })
+  async createFaculty(
+    @Param('id') id: string,
+    @Body() dto: CreateInstitutionFacultyRequestDto,
+  ): Promise<InstitutionFacultyResponseDto> {
+    const faculty = await this.createInstitutionFacultyFeature.execute({ name: dto.name, institutionId: id });
+
+    return InstitutionFacultyResponseDto.from(faculty);
+  }
+
+  @Delete(':id/faculties/:facultyId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Eliminar una facultad de una universidad' })
+  @ApiParam({ name: 'id', description: 'Id de la universidad' })
+  @ApiParam({ name: 'facultyId', description: 'Id de la facultad' })
+  @ApiNoContentResponse()
+  @ApiNotFoundResponse({ description: 'La facultad no existe en esa universidad' })
+  @ApiConflictResponse({ description: 'La facultad está siendo usada por un protocolo' })
+  async removeFaculty(@Param('id') id: string, @Param('facultyId') facultyId: string): Promise<void> {
+    await this.deleteInstitutionFacultyFeature.execute(id, facultyId);
   }
 }
