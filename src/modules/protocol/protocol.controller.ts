@@ -29,7 +29,8 @@ import { ListProtocolsQueryDto } from './dtos/request/list-protocols.query.dto';
 import { ProtocolResponseDto } from './dtos/response/protocol.response.dto';
 import { ProtocolSummaryResponseDto } from './dtos/response/protocol-summary.response.dto';
 import { ResearcherProtocolDetailResponseDto } from './dtos/response/researcher-protocol-detail.response.dto';
-
+import { GetDashboardReportFeature } from './features/get-dashboard-report.feature';
+import { GetDashboardReportQueryDto } from './dtos/request/get-dashboard-report.query.dto';
 @ApiTags('protocols')
 @ApiBearerAuth()
 @Controller('protocols')
@@ -42,6 +43,7 @@ export class ProtocolController {
     private readonly findResearcherProtocolByIdFeature: FindResearcherProtocolByIdFeature,
     private readonly findProtocolByIdFeature: FindProtocolByIdFeature,
     private readonly updateProtocolFeature: UpdateProtocolFeature,
+    private readonly getDashboardReportFeature: GetDashboardReportFeature,
   ) {}
 
   @Post()
@@ -101,6 +103,16 @@ export class ProtocolController {
 
   // Debe declararse antes que @Get(':id'), o "mine" se interpretaría como un id.
   // El rol a nivel de método reemplaza al ADMIN de la clase (RolesGuard usa getAllAndOverride).
+
+  @Get('dashboard-report')
+  @ApiOperation({ summary: 'Obtener reporte estadístico del Dashboard' })
+  @ApiOkResponse({
+    description: 'Total de protocolos y conteo por estado dentro del rango de fechas',
+  })
+  async getDashboardReport(@Query() query: GetDashboardReportQueryDto) {
+    return this.getDashboardReportFeature.execute(query.from, query.to);
+  }
+
   @Get('mine')
   @UseAuth(UserRole.RESEARCHER)
   @ApiOperation({ summary: 'Listar mis protocolos (investigador)' })

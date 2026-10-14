@@ -8,7 +8,7 @@ import { FindProtocolByIdFeature } from './features/find-protocol-by-id.feature'
 import { UpdateProtocolFeature } from './features/update-protocol.feature';
 import { ListResearcherProtocolsFeature } from './features/list-researcher-protocols.feature';
 import { FindResearcherProtocolByIdFeature } from './features/find-researcher-protocol-by-id.feature';
-
+import { GetDashboardReportFeature } from './features/get-dashboard-report.feature';
 @Module({
   imports: [PrismaModule, AuthModule],
   controllers: [ProtocolController],
@@ -19,6 +19,7 @@ import { FindResearcherProtocolByIdFeature } from './features/find-researcher-pr
     FindResearcherProtocolByIdFeature,
     FindProtocolByIdFeature,
     UpdateProtocolFeature,
+    GetDashboardReportFeature,
   ],
 })
 export class ProtocolModule {}
