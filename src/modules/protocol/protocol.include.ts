@@ -21,6 +21,7 @@ export type ProtocolWithRelations = Prisma.ProtocolGetPayload<{ include: typeof 
 // Vista reducida para el investigador: solo sus revisiones y sin montos ni revisor.
 export const RESEARCHER_PROTOCOL_DETAIL_INCLUDE = {
   investigadorPrincipal: true,
+  modalidad: { select: { name: true } },
   protocoloOriginal: { select: { id: true, nroExpediente: true } },
   corrections: { orderBy: { createdAt: 'desc' }, select: { id: true, comment: true, createdAt: true } },
   reviews: {
