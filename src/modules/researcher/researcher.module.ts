@@ -7,6 +7,7 @@ import { ListResearchersFeature } from './features/list-researchers.feature';
 import { FindResearcherByIdFeature } from './features/find-researcher-by-id.feature';
 import { UpdateResearcherFeature } from './features/update-researcher.feature';
 import { DeleteResearcherFeature } from './features/delete-researcher.feature';
+import { LookupResearcherByDniFeature } from './features/lookup-researcher-by-dni.feature';
 
 @Module({
   imports: [PrismaModule, AuthModule],
@@ -17,6 +18,7 @@ import { DeleteResearcherFeature } from './features/delete-researcher.feature';
     FindResearcherByIdFeature,
     UpdateResearcherFeature,
     DeleteResearcherFeature,
+    LookupResearcherByDniFeature,
   ],
 })
 export class ResearcherModule {}
