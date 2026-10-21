@@ -41,6 +41,20 @@ describe('LookupResearcherByDniFeature', () => {
     );
   });
 
+  it('keeps every given name and both surnames, including compound ones', async () => {
+    fetchMock.mockResolvedValue(
+      ok({
+        encontrado: true,
+        paciente: { nombres: 'Juan  Carlos Alberto', ap_pat: 'De la Cruz', ap_mat: 'Quispe Huamán' },
+      }),
+    );
+
+    await expect(feature.execute('12345678')).resolves.toMatchObject({
+      firstName: 'JUAN CARLOS ALBERTO',
+      lastName: 'DE LA CRUZ QUISPE HUAMÁN',
+    });
+  });
+
   it('works when there is no second surname', async () => {
     fetchMock.mockResolvedValue(ok({ encontrado: true, paciente: { nombres: 'Juan', ap_pat: 'Soto', ap_mat: ' ' } }));
 

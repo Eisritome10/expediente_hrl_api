@@ -11,13 +11,13 @@ export class CreateResearcherRequestDto {
 
   @ApiProperty({ description: 'Nombres del investigador', example: 'Juan' })
   @IsString()
-  @Length(1, 100)
+  @Length(1, 150)
   @UpperCase()
   firstName: string;
 
   @ApiProperty({ description: 'Apellidos del investigador', example: 'Pérez' })
   @IsString()
-  @Length(1, 100)
+  @Length(1, 150)
   @UpperCase()
   lastName: string;
 

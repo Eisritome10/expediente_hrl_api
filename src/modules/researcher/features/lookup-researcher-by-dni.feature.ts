@@ -70,14 +70,13 @@ export class LookupResearcherByDniFeature {
       throw new ReniecDniNotFoundException(dni);
     }
 
+    // Se conservan todos los nombres y ambos apellidos tal como los devuelve RENIEC (solo se limpian espacios).
+    const normalize = (value: string) => value.trim().replace(/\s+/g, ' ').toUpperCase();
+
     return {
       dni,
-      firstName: person.nombres.trim().toUpperCase(),
-      lastName: [person.ap_pat, person.ap_mat]
-        .map((part) => part?.trim())
-        .filter(Boolean)
-        .join(' ')
-        .toUpperCase(),
+      firstName: normalize(person.nombres),
+      lastName: normalize([person.ap_pat, person.ap_mat].filter(Boolean).join(' ')),
     };
   }
 }
