@@ -3,25 +3,33 @@ import { Committee, ProtocolStatus, ReviewOutcome, RiskLevel } from '@prisma/cli
 import PDFDocument from 'pdfkit';
 import { FindResearcherProtocolByIdFeature } from './find-researcher-protocol-by-id.feature';
 
-const BRAND = '#146c43';
-const BRAND_DARK = '#0f4c29';
-const BRAND_LIGHT = '#eaf5ee';
-const TEXT = '#1c1f1d';
-const MUTED = '#5c655f';
-const BORDER = '#d5dbd7';
+const TEXT = '#000000';
+const HEADER_GRAY = '#6b6b6b';
 
-const MARGIN = 56;
+const FRAME_INSET = 24;
+const MARGIN = 62;
 const TIME_ZONE = 'America/Lima';
+const VALIDITY_YEARS = 1;
 
-const RISK_LABELS: Record<RiskLevel, string> = {
-  NO_RISK: 'Sin riesgo',
-  MINIMAL_RISK: 'Riesgo mínimo',
-  MODERATE_RISK: 'Riesgo moderado',
-  HIGH_RISK: 'Riesgo alto',
+const RISK_TEXT: Record<RiskLevel, { classification: string; phrase: string }> = {
+  NO_RISK: { classification: 'ESTUDIO SIN RIESGO', phrase: 'sin riesgo' },
+  MINIMAL_RISK: { classification: 'ESTUDIO CON RIESGO MÍNIMO', phrase: 'de riesgo mínimo' },
+  MODERATE_RISK: { classification: 'ESTUDIO CON RIESGO MODERADO', phrase: 'de riesgo moderado' },
+  HIGH_RISK: { classification: 'ESTUDIO CON RIESGO ALTO', phrase: 'de riesgo alto' },
 };
 
-function formatLongDate(date: Date): string {
-  return date.toLocaleDateString('es-PE', { timeZone: TIME_ZONE, day: 'numeric', month: 'long', year: 'numeric' });
+type Segment = { text: string; bold?: boolean };
+
+// Formato de la constancia física: "05 de enero del 2026".
+function formatCertificateDate(date: Date): string {
+  const parts = new Intl.DateTimeFormat('es-PE', {
+    timeZone: TIME_ZONE,
+    day: '2-digit',
+    month: 'long',
+    year: 'numeric',
+  }).formatToParts(date);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? '';
+  return `${part('day')} de ${part('month')} del ${part('year')}`;
 }
 
 @Injectable()
@@ -38,7 +46,11 @@ export class GenerateResearcherEthicsCertificateFeature {
       throw new ConflictException('La constancia estará disponible cuando el CIEI finalice la aprobación.');
     }
 
-    const document = new PDFDocument({ size: 'A4', margin: MARGIN, info: { Title: `Constancia de aprobación ética ${protocol.nroExpediente}` } });
+    const document = new PDFDocument({
+      size: 'A4',
+      margin: MARGIN,
+      info: { Title: `Constancia de ética ${protocol.nroExpediente}` },
+    });
     const chunks: Buffer[] = [];
 
     return new Promise((resolve, reject) => {
@@ -50,121 +62,167 @@ export class GenerateResearcherEthicsCertificateFeature {
       const pageHeight = document.page.height;
       const contentWidth = pageWidth - MARGIN * 2;
 
-      // Banda institucional
-      document.rect(0, 0, pageWidth, 118).fill(BRAND);
-      document.rect(0, 118, pageWidth, 4).fill(BRAND_DARK);
+      // Párrafo justificado con tramos en negrita: pdfkit pierde los espacios en los cortes de estilo, así que se maqueta a mano.
+      const drawRich = (segments: Segment[], x: number, startY: number, width: number, fontSize: number, lineGap: number): number => {
+        type Piece = { text: string; bold?: boolean; gap: boolean; width: number };
+        const measure = (text: string, bold?: boolean) =>
+          document.font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(fontSize).widthOfString(text);
+        const spaceWidth = measure(' ');
+
+        const pieces: Piece[] = [];
+        let gap = false;
+        for (const segment of segments) {
+          for (const token of segment.text.match(/\S+|\s+/g) ?? []) {
+            if (/^\s/.test(token)) {
+              gap = true;
+            } else {
+              pieces.push({ text: token, bold: segment.bold, gap: gap && pieces.length > 0, width: measure(token, segment.bold) });
+              gap = false;
+            }
+          }
+        }
+
+        const lines: Piece[][] = [[]];
+        let lineWidth = 0;
+        for (const piece of pieces) {
+          const current = lines[lines.length - 1];
+          const added = (piece.gap && current.length ? spaceWidth : 0) + piece.width;
+          if (current.length && piece.gap && lineWidth + added > width) {
+            lines.push([{ ...piece, gap: false }]);
+            lineWidth = piece.width;
+          } else {
+            current.push(piece);
+            lineWidth += added;
+          }
+        }
+
+        const lineHeight = document.font('Helvetica').fontSize(fontSize).currentLineHeight(true) + lineGap;
+        let y = startY;
+        lines.forEach((line, index) => {
+          const gaps = line.filter((piece, i) => i > 0 && piece.gap).length;
+          const natural = line.reduce((sum, piece, i) => sum + piece.width + (i > 0 && piece.gap ? spaceWidth : 0), 0);
+          const isLast = index === lines.length - 1;
+          const gapWidth = !isLast && gaps > 0 ? spaceWidth + (width - natural) / gaps : spaceWidth;
+          let cursorX = x;
+          line.forEach((piece, i) => {
+            if (i > 0 && piece.gap) cursorX += gapWidth;
+            document.font(piece.bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(fontSize).fillColor(TEXT);
+            document.text(piece.text, cursorX, y, { lineBreak: false });
+            cursorX += piece.width;
+          });
+          y += lineHeight;
+        });
+        return y;
+      };
+
+      // Marco de la página
       document
-        .fillColor('#ffffff')
-        .font('Helvetica-Bold')
-        .fontSize(19)
-        .text('HOSPITAL REGIONAL DE LORETO', MARGIN, 34, { width: contentWidth, align: 'center' });
-      document
-        .font('Helvetica')
-        .fontSize(11)
-        .text('Comité de Ética en Investigación (CIEI)', MARGIN, 62, { width: contentWidth, align: 'center' });
-      document
-        .fontSize(9)
-        .fillColor('#cbe6d3')
-        .text('Oficina de Apoyo a la Docencia e Investigación', MARGIN, 82, { width: contentWidth, align: 'center' });
-
-      // Título
-      document
-        .fillColor(BRAND_DARK)
-        .font('Helvetica-Bold')
-        .fontSize(18)
-        .text('CONSTANCIA DE APROBACIÓN ÉTICA', MARGIN, 166, { width: contentWidth, align: 'center' });
-      document
-        .moveTo(pageWidth / 2 - 40, 196)
-        .lineTo(pageWidth / 2 + 40, 196)
-        .lineWidth(2)
-        .strokeColor(BRAND)
-        .stroke();
-
-      // Cuerpo
-      const investigator = `${protocol.investigadorPrincipal.firstName} ${protocol.investigadorPrincipal.lastName}`;
-      document
-        .fillColor(TEXT)
-        .font('Helvetica')
-        .fontSize(11.5)
-        .text(
-          `Se deja constancia de que el protocolo de investigación detallado a continuación fue evaluado y aprobado por el Comité de Ética en Investigación (CIEI) del Hospital Regional de Loreto.`,
-          MARGIN,
-          222,
-          { width: contentWidth, align: 'justify', lineGap: 5 },
-        );
-
-      // Tabla de datos
-      const rows: [string, string][] = [
-        ['N° de expediente', protocol.nroExpediente],
-        ['Título del protocolo', protocol.titulo],
-        ['Investigador principal', investigator],
-      ];
-      if (protocol.catalogadoRiesgo) {
-        rows.push(['Nivel de riesgo catalogado', RISK_LABELS[protocol.catalogadoRiesgo]]);
-      }
-      rows.push(['Fecha del dictamen final', formatLongDate(finalReview.createdAt)]);
-
-      const labelWidth = 185;
-      const cellPadding = 9;
-      let y = document.y + 22;
-
-      rows.forEach(([label, value], index) => {
-        document.font('Helvetica-Bold').fontSize(10.5);
-        const valueHeight = document.font('Helvetica').fontSize(11).heightOfString(value, { width: contentWidth - labelWidth - cellPadding * 2 });
-        const rowHeight = Math.max(valueHeight, 14) + cellPadding * 2;
-
-        document.rect(MARGIN, y, contentWidth, rowHeight).fill(index % 2 === 0 ? BRAND_LIGHT : '#ffffff');
-        document
-          .rect(MARGIN, y, contentWidth, rowHeight)
-          .lineWidth(0.5)
-          .strokeColor(BORDER)
-          .stroke();
-        document
-          .fillColor(BRAND_DARK)
-          .font('Helvetica-Bold')
-          .fontSize(10)
-          .text(label.toUpperCase(), MARGIN + cellPadding, y + cellPadding + 1, { width: labelWidth - cellPadding });
-        document
-          .fillColor(TEXT)
-          .font('Helvetica')
-          .fontSize(11)
-          .text(value, MARGIN + labelWidth + cellPadding, y + cellPadding, { width: contentWidth - labelWidth - cellPadding * 2 });
-
-        y += rowHeight;
-      });
-
-      // Firma
-      const signatureY = Math.max(y + 110, 600);
-      document
-        .moveTo(pageWidth / 2 - 110, signatureY)
-        .lineTo(pageWidth / 2 + 110, signatureY)
+        .rect(FRAME_INSET, FRAME_INSET, pageWidth - FRAME_INSET * 2, pageHeight - FRAME_INSET * 2)
         .lineWidth(0.8)
         .strokeColor(TEXT)
         .stroke();
+
+      // Encabezado institucional
+      document.fillColor(HEADER_GRAY).font('Helvetica');
+      document.fontSize(11.5).text('GERENCIA REGIONAL DE SALUD - LORETO', MARGIN, 52, { width: contentWidth, align: 'center', lineBreak: false });
+      document
+        .fontSize(12.5)
+        .text('HOSPITAL REGIONAL DE LORETO “FELIPE ARRIOLA IGLESIAS”', MARGIN, 69, { width: contentWidth, align: 'center', lineBreak: false });
+      document
+        .fontSize(12.5)
+        .text('COMITÉ INSTITUCIONAL DE ÉTICA EN INVESTIGACIÓN', MARGIN, 87, { width: contentWidth, align: 'center', lineBreak: false });
+      document
+        .fontSize(8.5)
+        .text('REGISTRADO ANTE EL INSTITUTO NACIONAL DE SALUD | CÓDIGO N.° 026-2026', MARGIN, 107, {
+          width: contentWidth,
+          align: 'center',
+          lineBreak: false,
+        });
+      document.moveTo(MARGIN, 124).lineTo(pageWidth - MARGIN, 124).lineWidth(0.6).strokeColor(HEADER_GRAY).stroke();
+
+      // Título
       document
         .fillColor(TEXT)
         .font('Helvetica-Bold')
-        .fontSize(11)
-        .text('Comité de Ética en Investigación', MARGIN, signatureY + 8, { width: contentWidth, align: 'center' });
-      document
-        .fillColor(MUTED)
-        .font('Helvetica')
-        .fontSize(10)
-        .text('Hospital Regional de Loreto', MARGIN, signatureY + 24, { width: contentWidth, align: 'center' });
+        .fontSize(15)
+        .text('CONSTANCIA DE ÉTICA', MARGIN, 146, { width: contentWidth, align: 'center', lineBreak: false });
 
-      // Pie de página (sin margen inferior para que pdfkit no abra otra página)
-      document.page.margins.bottom = 0;
-      document.rect(MARGIN, pageHeight - 62, contentWidth, 0.8).fill(BORDER);
-      document
-        .fillColor(MUTED)
-        .font('Helvetica')
-        .fontSize(8.5)
-        .text(
-          `Documento generado automáticamente por el sistema de seguimiento de protocolos el ${formatLongDate(new Date())}.`,
+      // Párrafo de aprobación
+      const risk = protocol.catalogadoRiesgo ? RISK_TEXT[protocol.catalogadoRiesgo] : null;
+      const approval: Segment[] = [
+        {
+          text: 'El presidente del Comité Institucional de Ética en Investigación (CIEI) del Hospital Regional de Loreto a través de la Oficina de Apoyo a la Docencia e Investigación, ',
+        },
+        { text: 'HACE CONSTAR', bold: true },
+        { text: ' que el presente proyecto de Investigación, consignado líneas abajo, fue ' },
+        { text: 'APROBADO', bold: true },
+        {
+          text: ', de acuerdo con la normativa nacional vigente y los procedimientos del CIEI-HRL, la evaluación riesgo-beneficio y confiabilidad de la información.',
+        },
+      ];
+      if (risk) {
+        approval.push({ text: ' El proyecto fue clasificado como ' }, { text: risk.classification, bold: true });
+      }
+      approval.push({ text: ', según detalle:' });
+
+      let y = drawRich(approval, MARGIN, 182, contentWidth, 10.5, 4);
+
+      // Detalle del proyecto (etiqueta + valor en negrita)
+      const labelWidth = 170;
+      const valueWidth = contentWidth - labelWidth;
+      y += 18;
+
+      const rows: [string, string][] = [['Título del Proyecto:', `“${protocol.titulo.toUpperCase()}”`]];
+      if (protocol.modalidad?.name) rows.push(['Modalidad de investigación:', protocol.modalidad.name.toUpperCase()]);
+      rows.push([
+        'Investigador principal:',
+        `${protocol.investigadorPrincipal.firstName} ${protocol.investigadorPrincipal.lastName}`.toUpperCase(),
+      ]);
+
+      rows.forEach(([label, value]) => {
+        document.font('Helvetica').fontSize(10.5).fillColor(TEXT).text(label, MARGIN, y, { width: labelWidth - 10 });
+        document.font('Helvetica-Bold').fontSize(10.5);
+        const height = document.heightOfString(value, { width: valueWidth, align: 'justify', lineGap: 3 });
+        document.text(value, MARGIN + labelWidth, y, { width: valueWidth, align: 'justify', lineGap: 3 });
+        y += Math.max(height, 14) + 16;
+      });
+
+      // Clasificación de riesgo
+      if (risk) {
+        y = drawRich(
+          [
+            { text: 'El CIEI clasificó el proyecto como investigación con participación de seres humanos ' },
+            { text: risk.phrase, bold: true },
+            { text: '.' },
+          ],
           MARGIN,
-          pageHeight - 50,
-          { width: contentWidth, align: 'center', lineBreak: false },
+          y + 2,
+          contentWidth,
+          10.5,
+          4,
         );
+        y += 14;
+      }
+
+      // Vigencia
+      const dictamenDate = finalReview.createdAt;
+      const expiration = new Date(dictamenDate);
+      expiration.setFullYear(expiration.getFullYear() + VALIDITY_YEARS);
+      y = drawRich(
+        [
+          {
+            text: `El presente documento tiene vigencia hasta el ${formatCertificateDate(expiration)}. El trámite para su renovación se realizará con un mínimo de 30 días de anticipación a su vencimiento.`,
+          },
+        ],
+        MARGIN,
+        y,
+        contentWidth,
+        10.5,
+        4,
+      );
+
+      // Lugar y fecha
+      drawRich([{ text: `Punchana, ${formatCertificateDate(dictamenDate)}.` }], MARGIN, y + 14, contentWidth, 10.5, 4);
 
       document.end();
     });

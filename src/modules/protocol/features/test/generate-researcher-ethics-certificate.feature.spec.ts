@@ -28,12 +28,15 @@ describe('GenerateResearcherEthicsCertificateFeature', () => {
       nroExpediente: '123/2026',
       titulo: 'Estudio de investigación',
       investigadorPrincipal: { firstName: 'Ana', lastName: 'Pérez' },
+      modalidad: { name: 'Pregrado' },
+      catalogadoRiesgo: 'MINIMAL_RISK',
       reviews: [{ committee: 'CIEI', outcome: 'FINALIZED', createdAt: new Date('2026-10-15T12:00:00Z') }],
     });
 
     const pdf = await feature.execute('user-1', 'protocol-1');
 
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
+    expect(pdf.toString('latin1').match(/\/Type \/Page/g)).toHaveLength(1);
     expect(findResearcherProtocolByIdFeature.execute).toHaveBeenCalledWith('user-1', 'protocol-1');
   });
 });
