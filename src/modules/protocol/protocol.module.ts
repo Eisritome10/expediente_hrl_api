@@ -9,6 +9,8 @@ import { UpdateProtocolFeature } from './features/update-protocol.feature';
 import { ListResearcherProtocolsFeature } from './features/list-researcher-protocols.feature';
 import { FindResearcherProtocolByIdFeature } from './features/find-researcher-protocol-by-id.feature';
 import { GetDashboardReportFeature } from './features/get-dashboard-report.feature';
+import { GenerateResearcherEthicsCertificateFeature } from './features/generate-researcher-ethics-certificate.feature';
+
 @Module({
   imports: [PrismaModule, AuthModule],
   controllers: [ProtocolController],
@@ -17,6 +19,7 @@ import { GetDashboardReportFeature } from './features/get-dashboard-report.featu
     ListProtocolsFeature,
     ListResearcherProtocolsFeature,
     FindResearcherProtocolByIdFeature,
+    GenerateResearcherEthicsCertificateFeature,
     FindProtocolByIdFeature,
     UpdateProtocolFeature,
     GetDashboardReportFeature,

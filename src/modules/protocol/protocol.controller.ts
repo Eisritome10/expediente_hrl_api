@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, StreamableFile } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiConflictResponse,
@@ -7,6 +7,7 @@ import {
   ApiNotFoundResponse,
   ApiOkResponse,
   ApiOperation,
+  ApiProduces,
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger';
@@ -21,6 +22,7 @@ import { CreateProtocolFeature } from './features/create-protocol.feature';
 import { ListProtocolsFeature } from './features/list-protocols.feature';
 import { ListResearcherProtocolsFeature } from './features/list-researcher-protocols.feature';
 import { FindResearcherProtocolByIdFeature } from './features/find-researcher-protocol-by-id.feature';
+import { GenerateResearcherEthicsCertificateFeature } from './features/generate-researcher-ethics-certificate.feature';
 import { FindProtocolByIdFeature } from './features/find-protocol-by-id.feature';
 import { UpdateProtocolFeature, UpdateProtocolInput } from './features/update-protocol.feature';
 import { CreateProtocolRequestDto } from './dtos/request/create-protocol.request.dto';
@@ -41,6 +43,7 @@ export class ProtocolController {
     private readonly listProtocolsFeature: ListProtocolsFeature,
     private readonly listResearcherProtocolsFeature: ListResearcherProtocolsFeature,
     private readonly findResearcherProtocolByIdFeature: FindResearcherProtocolByIdFeature,
+    private readonly generateResearcherEthicsCertificateFeature: GenerateResearcherEthicsCertificateFeature,
     private readonly findProtocolByIdFeature: FindProtocolByIdFeature,
     private readonly updateProtocolFeature: UpdateProtocolFeature,
     private readonly getDashboardReportFeature: GetDashboardReportFeature,
@@ -147,6 +150,27 @@ export class ProtocolController {
     const protocol = await this.findResearcherProtocolByIdFeature.execute(currentUser.id, id);
 
     return ResearcherProtocolDetailResponseDto.from(protocol);
+  }
+
+  @Get('mine/:id/ethics-certificate')
+  @UseAuth(UserRole.RESEARCHER)
+  @ApiOperation({ summary: 'Descargar constancia de aprobación del CIEI' })
+  @ApiProduces('application/pdf')
+  @ApiParam({ name: 'id', description: 'Id del protocolo' })
+  @ApiOkResponse({ description: 'Constancia de aprobación ética en PDF' })
+  @ApiForbiddenResponse({ description: 'Solo disponible para el investigador vinculado al protocolo' })
+  @ApiNotFoundResponse({ description: 'El protocolo no existe o no pertenece al investigador' })
+  @ApiConflictResponse({ description: 'El CIEI aún no ha finalizado la aprobación del protocolo' })
+  async downloadEthicsCertificate(
+    @CurrentUser() currentUser: AuthCurrentUser,
+    @Param('id') id: string,
+  ): Promise<StreamableFile> {
+    const pdf = await this.generateResearcherEthicsCertificateFeature.execute(currentUser.id, id);
+
+    return new StreamableFile(pdf, {
+      type: 'application/pdf',
+      disposition: `attachment; filename="constancia-etica-${id}.pdf"`,
+    });
   }
 
   @Get(':id')
