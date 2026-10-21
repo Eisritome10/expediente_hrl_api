@@ -233,7 +233,7 @@ model Protocol {
   esEnmienda Boolean @default(false)
 
   protocoloOriginalId String?
-  protocoloOriginal   Protocol?  @relation("ProtocolEnmiendas", fields: [protocoloOriginalId], references: [id], onDelete: Restrict)
+  protocoloOriginal   Protocol?  @relation("ProtocolEnmiendas", fields: [protocoloOriginalId], references: [id], onDelete: Cascade)
   enmiendas           Protocol[] @relation("ProtocolEnmiendas")
 
   requiereRevisionHc Boolean  @default(false)
@@ -269,7 +269,7 @@ model ProtocolCorrection {
   id String @id @default(uuid())
 
   protocolId String
-  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Restrict)
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
 
   comment String
 
@@ -284,7 +284,7 @@ model ProtocolReview {
   id String @id @default(uuid())
 
   protocolId String
-  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Restrict)
+  protocol   Protocol @relation(fields: [protocolId], references: [id], onDelete: Cascade)
 
   reviewerId String
   reviewer   User @relation(fields: [reviewerId], references: [id], onDelete: Restrict)
@@ -314,7 +314,7 @@ model ProtocolReviewObservation {
   id String @id @default(uuid())
 
   reviewId String
-  review   ProtocolReview @relation(fields: [reviewId], references: [id], onDelete: Restrict)
+  review   ProtocolReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
 
   type ObservationType
   text String

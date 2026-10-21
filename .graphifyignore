@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+out/
+coverage/
+.next/
+.nuxt/
+.angular/
+vendor/
+target/
+bin/
+obj/
+__pycache__/
+.venv/
+*.min.js
+*.map
+graphify-out/
