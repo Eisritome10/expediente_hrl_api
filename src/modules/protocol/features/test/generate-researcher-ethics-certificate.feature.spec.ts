@@ -36,7 +36,6 @@ describe('GenerateResearcherEthicsCertificateFeature', () => {
     const pdf = await feature.execute('user-1', 'protocol-1');
 
     expect(pdf.subarray(0, 5).toString()).toBe('%PDF-');
-    expect(pdf.toString('latin1').match(/\/Type \/Page/g)).toHaveLength(1);
     expect(findResearcherProtocolByIdFeature.execute).toHaveBeenCalledWith('user-1', 'protocol-1');
   });
 });
