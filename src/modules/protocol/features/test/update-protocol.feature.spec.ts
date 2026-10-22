@@ -92,6 +92,10 @@ describe('UpdateProtocolFeature', () => {
     (tx.protocol.updateMany as jest.Mock).mockResolvedValue({ count: 1 });
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('updates only the given field, keeping the rest and moving status to CIC_CORRECTED', async () => {
     mockValidReferences();
     const updated = { id: 'p1', status: ProtocolStatus.CIC_CORRECTED };
@@ -118,6 +122,39 @@ describe('UpdateProtocolFeature', () => {
     expect(dataArg.asesores).toBeUndefined();
     expect(dataArg.destinos).toBeUndefined();
     expect(dataArg.disenosEstudio).toBeUndefined();
+  });
+
+  it('rebuilds nroExpediente with the current server year when numeroExpediente is sent', async () => {
+    jest.useFakeTimers({ now: new Date('2027-02-01T12:00:00Z') });
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { numeroExpediente: '999' });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.nroExpediente).toBe('999/2027');
+  });
+
+  it('rebuilds the expediente with another server year even when the number does not change', async () => {
+    jest.useFakeTimers({ now: new Date('2028-06-15T12:00:00Z') });
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { numeroExpediente: '542' });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.nroExpediente).toBe('542/2028');
+  });
+
+  it('keeps nroExpediente untouched when numeroExpediente is undefined', async () => {
+    jest.useFakeTimers({ now: new Date('2030-09-20T12:00:00Z') });
+    mockValidReferences();
+    (tx.protocol.update as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute('p1', { numeroExpediente: undefined, titulo: 'OTRO TITULO' });
+
+    const dataArg = (tx.protocol.update as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.nroExpediente).toBe('542/2026');
   });
 
   it('replaces only the relation whose array was sent', async () => {
@@ -409,7 +446,7 @@ describe('UpdateProtocolFeature', () => {
       }),
     );
 
-    await expect(feature.execute('p1', { nroExpediente: '999/2026' })).rejects.toBeInstanceOf(
+    await expect(feature.execute('p1', { numeroExpediente: '999' })).rejects.toBeInstanceOf(
       ProtocolNroExpedienteAlreadyExistsException,
     );
   });

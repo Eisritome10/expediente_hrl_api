@@ -8,7 +8,7 @@ import { PROTOCOL_INCLUDE, ProtocolWithRelations } from '../protocol.include';
 import { ProtocolNroExpedienteAlreadyExistsException } from '../exceptions/protocol-nro-expediente-already-exists.exception';
 import { ProtocolNotObservedException } from '../exceptions/protocol-not-observed.exception';
 import { FindProtocolByIdFeature } from './find-protocol-by-id.feature';
-import { CreateProtocolInput } from './create-protocol.feature';
+import { CreateProtocolInput, buildNroExpediente } from './create-protocol.feature';
 
 export type UpdateProtocolInput = Partial<Omit<CreateProtocolInput, 'protocoloOriginalId'>> & {
   /** Comentario de la corrección (historial); opcional. */
@@ -34,6 +34,9 @@ export class UpdateProtocolFeature {
       throw new ProtocolNotObservedException(id);
     }
 
+    // Si se corrige el número, el expediente se rearma con el año actual del servidor (no se conserva el año original).
+    const nroExpediente =
+      patch.numeroExpediente !== undefined ? buildNroExpediente(patch.numeroExpediente) : current.nroExpediente;
     const merged = this.toEffectiveInput(current, patch);
     // Las enmiendas históricas pueden no tener original: se conserva el esEnmienda del registro actual.
     const touchesComprobantes =
@@ -49,7 +52,7 @@ export class UpdateProtocolFeature {
     await validateProtocolReferences(this.prisma, merged);
 
     const data: Prisma.ProtocolUpdateInput = {
-      nroExpediente: merged.nroExpediente,
+      nroExpediente,
       fechaRecepcion: merged.fechaRecepcion,
       titulo: merged.titulo,
       lugarEjecucion: merged.lugarEjecucion,
@@ -114,16 +117,18 @@ export class UpdateProtocolFeature {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         const target = getUniqueConstraintTarget(e);
         if (target.includes('nroExpediente') || target.includes('nro_expediente')) {
-          throw new ProtocolNroExpedienteAlreadyExistsException(merged.nroExpediente);
+          throw new ProtocolNroExpedienteAlreadyExistsException(nroExpediente);
         }
       }
       throw e;
     }
   }
 
-  private toEffectiveInput(current: ProtocolWithRelations, patch: UpdateProtocolInput): CreateProtocolInput {
+  private toEffectiveInput(
+    current: ProtocolWithRelations,
+    patch: UpdateProtocolInput,
+  ): Omit<CreateProtocolInput, 'numeroExpediente'> {
     return {
-      nroExpediente: patch.nroExpediente !== undefined ? patch.nroExpediente : current.nroExpediente,
       fechaRecepcion: patch.fechaRecepcion !== undefined ? patch.fechaRecepcion : current.fechaRecepcion,
       titulo: patch.titulo !== undefined ? patch.titulo : current.titulo,
       lugarEjecucion: patch.lugarEjecucion !== undefined ? patch.lugarEjecucion : current.lugarEjecucion,

@@ -7,8 +7,13 @@ import { validateProtocolReferences } from '../protocol.references';
 import { PROTOCOL_INCLUDE, ProtocolWithRelations } from '../protocol.include';
 import { ProtocolNroExpedienteAlreadyExistsException } from '../exceptions/protocol-nro-expediente-already-exists.exception';
 
+/** Arma el expediente "<número>/<año>" con el año de `now` (por defecto, el año actual del servidor). */
+export function buildNroExpediente(numeroExpediente: string, now: Date = new Date()): string {
+  return `${numeroExpediente}/${now.getFullYear()}`;
+}
+
 export type CreateProtocolInput = {
-  nroExpediente: string;
+  numeroExpediente: string; // 1 a 5 dígitos, ya validado por el DTO
   fechaRecepcion: Date;
   titulo: string;
   lugarEjecucion: string;
@@ -45,6 +50,7 @@ export class CreateProtocolFeature {
   constructor(private readonly prisma: PrismaService) {}
 
   async execute(input: CreateProtocolInput): Promise<ProtocolWithRelations> {
+    const nroExpediente = buildNroExpediente(input.numeroExpediente);
     // Una enmienda es un protocolo que referencia a otro protocolo finalizado.
     const esEnmienda = input.protocoloOriginalId !== null;
     const rules = applyProtocoloRules({ ...input, esEnmienda });
@@ -53,7 +59,7 @@ export class CreateProtocolFeature {
     try {
       return await this.prisma.protocol.create({
         data: {
-          nroExpediente: input.nroExpediente,
+          nroExpediente,
           fechaRecepcion: input.fechaRecepcion,
           titulo: input.titulo,
           lugarEjecucion: input.lugarEjecucion,
@@ -93,7 +99,7 @@ export class CreateProtocolFeature {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
         const target = getUniqueConstraintTarget(e);
         if (target.includes('nroExpediente') || target.includes('nro_expediente')) {
-          throw new ProtocolNroExpedienteAlreadyExistsException(input.nroExpediente);
+          throw new ProtocolNroExpedienteAlreadyExistsException(nroExpediente);
         }
       }
       throw e;

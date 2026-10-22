@@ -17,14 +17,13 @@ import { UpperCase } from '../../../../common/decorators/upper-case.decorator';
 
 export class CreateProtocolRequestDto {
   @ApiProperty({
-    description: 'Número de expediente (único). Solo números: hasta 4 dígitos, una barra y hasta 6 dígitos',
-    example: '1234/123456',
+    description:
+      'Número correlativo del expediente (solo dígitos, de 1 a 5). El sistema arma el expediente completo como "<número>/<año actual>"',
+    example: '542',
   })
   @IsString()
-  @Matches(/^\d{1,4}\/\d{1,6}$/, {
-    message: 'nroExpediente debe tener el formato 1234/123456 (solo números)',
-  })
-  nroExpediente: string;
+  @Matches(/^\d{1,5}$/, { message: 'numeroExpediente debe tener de 1 a 5 dígitos (solo números)' })
+  numeroExpediente: string;
 
   @ApiProperty({ description: 'Fecha de recepción', example: '2026-01-15' })
   @IsDateString()

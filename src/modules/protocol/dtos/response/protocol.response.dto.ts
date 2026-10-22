@@ -89,7 +89,8 @@ export class ProtocolResponseDto {
   @ApiProperty() readonly id: string;
   @ApiProperty({ enum: ProtocolStatus, description: 'Estado del protocolo: CREATED (creado), CIC_OBSERVED (observado por CIC), CIC_CORRECTED (corregido para CIC), CIEI_OBSERVED (observado por CIEI), CIEI_CORRECTED (corregido para CIEI), FINALIZED (finalizado)' })
   readonly status: ProtocolStatus;
-  @ApiProperty() readonly nroExpediente: string;
+  @ApiProperty({ description: 'Número de expediente completo, formato "<número>/<año>"', example: '542/2026' })
+  readonly nroExpediente: string;
   @ApiProperty() readonly fechaRecepcion: Date;
   @ApiProperty() readonly titulo: string;
   @ApiProperty() readonly lugarEjecucion: string;
