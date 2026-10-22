@@ -1,6 +1,6 @@
 import { InstitutionType, LineType, Prisma, ProtocolStatus } from '@prisma/client';
 import { PrismaService } from '../../../../prisma/prisma.service';
-import { CreateProtocolFeature, CreateProtocolInput } from '../create-protocol.feature';
+import { CreateProtocolFeature, CreateProtocolInput, buildNroExpediente } from '../create-protocol.feature';
 import { ProtocolInvalidReferenceException } from '../../exceptions/protocol-invalid-reference.exception';
 import { ProtocolOriginalNotAmendableException } from '../../exceptions/protocol-original-not-amendable.exception';
 import { ProtocolInvalidResearchLineException } from '../../exceptions/protocol-invalid-research-line.exception';
@@ -28,7 +28,7 @@ describe('CreateProtocolFeature', () => {
   const feature = new CreateProtocolFeature(prisma);
 
   const input: CreateProtocolInput = {
-    nroExpediente: '542/2026',
+    numeroExpediente: '542',
     fechaRecepcion: new Date('2026-01-15'),
     titulo: 'ESTUDIO DE PRUEBA',
     lugarEjecucion: 'HRL',
@@ -77,7 +77,12 @@ describe('CreateProtocolFeature', () => {
     jest.clearAllMocks();
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it('creates a protocol with the resolved relations', async () => {
+    jest.useFakeTimers({ now: new Date('2026-03-10T12:00:00Z') });
     mockValidReferences();
     const created = { id: 'p1' };
     (prisma.protocol.create as jest.Mock).mockResolvedValue(created);
@@ -86,7 +91,7 @@ describe('CreateProtocolFeature', () => {
     expect(prisma.protocol.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
-          nroExpediente: input.nroExpediente,
+          nroExpediente: '542/2026',
           investigadorPrincipal: { connect: { id: 'r1' } },
           institucion: { connect: { id: 'i1' } },
           facultad: { connect: { id: 'f1' } },
@@ -100,6 +105,17 @@ describe('CreateProtocolFeature', () => {
         }),
       }),
     );
+  });
+
+  it('builds the expediente with the server year instead of storing the raw number', async () => {
+    jest.useFakeTimers({ now: new Date('2027-01-05T12:00:00Z') });
+    mockValidReferences();
+    (prisma.protocol.create as jest.Mock).mockResolvedValue({ id: 'p1' });
+
+    await feature.execute(input);
+
+    const dataArg = (prisma.protocol.create as jest.Mock).mock.calls[0][0].data;
+    expect(dataArg.nroExpediente).toBe('542/2027');
   });
 
   it('applies protocolo rules before validating references', async () => {
@@ -395,5 +411,21 @@ describe('CreateProtocolFeature', () => {
     (prisma.protocol.create as jest.Mock).mockResolvedValue({ id: 'p1' });
 
     await expect(feature.execute({ ...input, facultadId: null })).resolves.toEqual({ id: 'p1' });
+  });
+});
+
+describe('buildNroExpediente', () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('joins the number and the year of the given date', () => {
+    expect(buildNroExpediente('7', new Date('2026-03-10T12:00:00Z'))).toBe('7/2026');
+  });
+
+  it('uses the server clock when no date is given', () => {
+    jest.useFakeTimers({ now: new Date('2026-03-10T12:00:00Z') });
+
+    expect(buildNroExpediente('542')).toBe('542/2026');
   });
 });

@@ -54,7 +54,7 @@ export class ProtocolController {
   @ApiCreatedResponse({ type: ProtocolResponseDto })
   async create(@Body() dto: CreateProtocolRequestDto): Promise<ProtocolResponseDto> {
     const protocol = await this.createProtocolFeature.execute({
-      nroExpediente: dto.nroExpediente,
+      numeroExpediente: dto.numeroExpediente,
       fechaRecepcion: new Date(dto.fechaRecepcion),
       titulo: dto.titulo,
       lugarEjecucion: dto.lugarEjecucion,
@@ -188,7 +188,7 @@ export class ProtocolController {
   @ApiOperation({
     summary: 'Corregir un protocolo observado',
     description:
-      'Solo permitido si el protocolo está OBSERVADO. Los campos omitidos se conservan; null en un campo opcional lo limpia; un array reemplaza la relación completa. Al guardar, el estado pasa a CORREGIDO.',
+      'Solo permitido si el protocolo está OBSERVADO. Los campos omitidos se conservan; null en un campo opcional lo limpia; un array reemplaza la relación completa. Si se envía numeroExpediente, el expediente se rearma como "<número>/<año actual del servidor>" (no se conserva el año anterior). Al guardar, el estado pasa a CORREGIDO.',
   })
   @ApiParam({ name: 'id', description: 'Id del protocolo' })
   @ApiOkResponse({ type: ProtocolResponseDto })
@@ -203,7 +203,7 @@ export class ProtocolController {
   private toUpdateInput(dto: UpdateProtocolRequestDto): UpdateProtocolInput {
     return {
       correctionComment: dto.correctionComment?.trim() || undefined,
-      nroExpediente: dto.nroExpediente,
+      numeroExpediente: dto.numeroExpediente,
       fechaRecepcion: dto.fechaRecepcion !== undefined ? new Date(dto.fechaRecepcion) : undefined,
       titulo: dto.titulo,
       lugarEjecucion: dto.lugarEjecucion,
